@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeighbourShield Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body class="bg-gray-100">
     <nav class="bg-blue-800 text-white p-4 shadow-md">
@@ -14,42 +19,95 @@
         </div>
     </nav>
 
-    <div class="container mx-auto mt-8 p-4">
-        <h2 class="text-2xl font-semibold mb-4">Active SOS Incidents</h2>
+    <div class="container mx-auto mt-8 p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
+        <!-- Left Side: The Map -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-semibold mb-4">Live Incident Map</h2>
+            <!-- Map Container (must have a defined height) -->
+            <div id="map" class="w-full h-[500px] rounded border"></div>
+        </div>
+
+        <!-- Right Side: The Table -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="min-w-full bg-white">
-                <thead class="bg-gray-800 text-white">
-                    <tr>
-                        <th class="py-3 px-4 text-left">Resident</th>
-                        <th class="py-3 px-4 text-left">Location (Lat, Lng)</th>
-                        <th class="py-3 px-4 text-left">Status</th>
-                        <th class="py-3 px-4 text-left">Time</th>
-                    </tr>
-                </thead>
-                <tbody class="text-gray-700">
-                    {% for incident in incidents %}
-                    <tr class="border-b">
-                        <td class="py-3 px-4">{{ incident.user.username }}</td>
-                        <td class="py-3 px-4">{{ incident.latitude }}, {{ incident.longitude }}</td>
-                        <td class="py-3 px-4">
-                            <span class="px-2 py-1 rounded text-sm
-                                {% if incident.status == 'pending' %} bg-red-200 text-red-800
-                                {% elif incident.status == 'acknowledged' %} bg-yellow-200 text-yellow-800
-                                {% else %} bg-green-200 text-green-800 {% endif %}">
-                                {{ incident.status|title }}
-                            </span>
-                        </td>
-                        <td class="py-3 px-4">{{ incident.created_at|date:"M d, Y H:i" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="py-4 text-center text-gray-500">No active incidents.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">Active SOS Incidents</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-800 text-white">
+                        <tr>
+                            <th class="py-3 px-4 text-left">Resident</th>
+                            <th class="py-3 px-4 text-left">Status</th>
+                            <th class="py-3 px-4 text-left">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-700">
+                        {% for incident in incidents %}
+                        <tr class="border-b">
+                            <td class="py-3 px-4">{{ incident.user.username }}</td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-1 rounded text-sm
+                                    {% if incident.status == 'pending' %} bg-red-200 text-red-800
+                                    {% elif incident.status == 'acknowledged' %} bg-yellow-200 text-yellow-800
+                                    {% else %} bg-green-200 text-green-800 {% endif %}">
+                                    {{ incident.status|title }}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4">{{ incident.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="py-4 text-center text-gray-500">No active incidents.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+
+    <!-- Map Initialization Script -->
+    <script>
+        // 1. Get the JSON data passed from Django
+        const markersData = JSON.parse('{{ map_markers_json|escapejs }}');
+
+        // 2. Initialize the map (Default center: Malaysia/Kuala Lumpur roughly)
+        // If there are incidents, we will center the map on the first incident later
+        let mapCenter = [3.1390, 101.6869];
+        let zoomLevel = 10;
+
+        if (markersData.length > 0) {
+            mapCenter = [markersData[0].lat, markersData[0].lng];
+            zoomLevel = 14; // Zoom in closer if we have active incidents
+        }
+
+        const map = L.map('map').setView(mapCenter, zoomLevel);
+
+        // 3. Add the OpenStreetMap tiles (the actual map images)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors, © CARTO'
+        }).addTo(map);
+
+        // 4. Loop through the data and place pins on the map
+        markersData.forEach(function(markerInfo) {
+            // Choose marker color based on status (Red for pending, Yellow/Orange for acknowledged)
+            let circleColor = markerInfo.status === 'pending' ? 'red' : 'orange';
+
+            // Add a circle marker
+            let marker = L.circleMarker([markerInfo.lat, markerInfo.lng], {
+                color: circleColor,
+                fillColor: circleColor,
+                fillOpacity: 0.8,
+                radius: 8
+            }).addTo(map);
+
+            // Add a popup when clicking the marker
+            marker.bindPopup(`
+                <strong>Resident:</strong> ${markerInfo.user}<br>
+                <strong>Status:</strong> ${markerInfo.status.toUpperCase()}<br>
+                <strong>Time:</strong> ${markerInfo.time}
+            `);
+        });
+    </script>
 </body>
 </html>
