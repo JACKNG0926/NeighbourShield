@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeighbourShield Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-blue-800 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between">
+            <h1 class="text-xl font-bold">NeighbourShield Admin Dashboard</h1>
+            <span>Logged in as: {{ request.user.username }}</span>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-8 p-4">
+        <h2 class="text-2xl font-semibold mb-4">Active SOS Incidents</h2>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Resident</th>
+                        <th class="py-3 px-4 text-left">Location (Lat, Lng)</th>
+                        <th class="py-3 px-4 text-left">Status</th>
+                        <th class="py-3 px-4 text-left">Time</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    {% for incident in incidents %}
+                    <tr class="border-b">
+                        <td class="py-3 px-4">{{ incident.user.username }}</td>
+                        <td class="py-3 px-4">{{ incident.latitude }}, {{ incident.longitude }}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded text-sm
+                                {% if incident.status == 'pending' %} bg-red-200 text-red-800
+                                {% elif incident.status == 'acknowledged' %} bg-yellow-200 text-yellow-800
+                                {% else %} bg-green-200 text-green-800 {% endif %}">
+                                {{ incident.status|title }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">{{ incident.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="py-4 text-center text-gray-500">No active incidents.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
