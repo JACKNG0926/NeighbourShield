@@ -1,11 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
-from .views import UserViewSet, IncidentViewSet, SafetyPostViewSet
+from .views import DeviceViewSet, UserViewSet, IncidentViewSet, SafetyPostViewSet
 
 # The router automatically generates standard REST URLs for our ViewSets
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
+router.register(r'devices', DeviceViewSet, basename='device')
 router.register(r'incidents', IncidentViewSet)
 router.register(r'posts', SafetyPostViewSet)
 

@@ -90,9 +90,9 @@ WSGI_APPLICATION = 'neighbour_shield_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'neighbourshield',
+        'NAME': 'sime',
         'USER': 'root',
-        'PASSWORD': 'password123',
+        'PASSWORD': '12345',
         'HOST': '127.0.0.1',
         'PORT': '3306',
     }
