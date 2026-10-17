@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Township setup | NeighbourShield</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="fixed left-0 top-0 h-full z-40">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-10 h-14 ml-0 rounded-r-md bg-blue-700 text-white flex items-center justify-center hover:bg-blue-600 focus:outline-none ring-2 ring-white/20 transition-transform duration-200">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-100 transform -translate-x-[15rem] transition-transform duration-200 z-40">
+            <div class="border-b border-slate-700 px-5 py-6 text-xl font-bold">NeighbourShield</div>
+            <nav class="space-y-2 p-3">
+                <a href="{% url 'dashboard' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Dashboard</a>
+                <a href="{% url 'township-management' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Township setup</a>
+                <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
+            </nav>
+        </aside>
+    </div>
+
+    <!-- WRAPPER FOR MAIN CONTENT -->
+    <div id="page-content" class="transition-all duration-200 ml-0">
+        <header class="bg-blue-800 p-4 text-white shadow-md">
+            <div class="container mx-auto flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-bold">Township setup</h1>
+                    <p class="text-sm text-blue-100">Create areas before registering their properties.</p>
+                </div>
+                <a href="{% url 'dashboard' %}" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold hover:bg-blue-600">Back to dashboard</a>
+            </div>
+        </header>
+
+        <main class="container mx-auto max-w-6xl p-4 lg:p-8">
+            {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                <div class="rounded bg-green-100 p-3 text-green-800">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <section class="rounded-lg bg-white p-6 shadow">
+                    <h2 class="text-xl font-semibold text-gray-900">Add area</h2>
+                    <p class="mt-1 text-sm text-gray-600">Its centre coordinate and radius are shown as a dotted boundary on the dashboard map.</p>
+                    <form method="post" class="mt-5 space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="area">
+                        {% for field in area_form %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                        </div>
+                        {% endfor %}
+                        {% for error in area_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+                        <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800">Add area</button>
+                    </form>
+                </section>
+
+                <section class="rounded-lg bg-white p-6 shadow">
+                    <h2 class="text-xl font-semibold text-gray-900">Add property</h2>
+                    <p class="mt-1 text-sm text-gray-600">Choose an area, then enter the coordinate where the blue property pin should appear.</p>
+                    <form method="post" class="mt-5 space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="property">
+                        {% for field in property_form %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                        </div>
+                        {% endfor %}
+                        {% for error in property_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+                        <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800">Add property</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+    </div> <!-- END WRAPPER -->
+
+    <script>
+        (function(){
+            const toggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            const pageContent = document.getElementById('page-content');
+
+            if (!toggle || !sidebar) return;
+            toggle.addEventListener('click', function(e){
+                const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+                if (isOpen) {
+                    sidebar.classList.add('-translate-x-[15rem]');
+                    sidebar.classList.remove('translate-x-0');
+                    toggle.classList.remove('translate-x-[15rem]');
+                    icon.classList.remove('rotate-180');
+                    toggle.setAttribute('aria-expanded','false');
+
+                    if(pageContent) pageContent.classList.remove('ml-60');
+                } else {
+                    sidebar.classList.remove('-translate-x-[15rem]');
+                    sidebar.classList.add('translate-x-0');
+                    toggle.classList.add('translate-x-[15rem]');
+                    icon.classList.add('rotate-180');
+                    toggle.setAttribute('aria-expanded','true');
+
+                    if(pageContent) pageContent.classList.add('ml-60');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

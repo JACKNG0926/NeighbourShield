@@ -29,11 +29,41 @@ With no database environment variables, development uses the local `db.sqlite3`.
 
 ## API safety rules
 
-- Obtain a token with `POST /api/login/`; send it as `Authorization: Token <token>`.
+- Register a resident with `POST /api/auth/register/`, or log in with `POST /api/auth/login/`; send the returned token as `Authorization: Token <token>`.
 - SOS creation and acknowledgement use the transaction-safe workflow in `Incident`.
 - Residents see only their own incidents and can only edit their own hazard reports.
 - Township administrators manage users; official announcements and broadcasts require administrator permissions.
 - Register app installations at `/api/devices/`; device tokens are write-only and are never returned.
+
+## Flutter API
+
+All JSON endpoints are under `/api/`. Use the trailing slash shown below and send `Content-Type: application/json`.
+
+| Endpoint | Methods | Purpose |
+| --- | --- | --- |
+| `/api/auth/register/` | POST | Create a resident account and return a token/profile. |
+| `/api/auth/login/` | POST | Log in with `username` and `password`; returns token/profile. |
+| `/api/me/` | GET, PATCH | Read or update the authenticated resident's profile. |
+| `/api/me/location/` | PUT | Update only the logged-in user's location with `latitude` and `longitude`. |
+| `/api/areas/` | GET | List township areas and their map boundaries. |
+| `/api/properties/` | GET | Admins see all properties; residents see only their assigned residence. |
+| `/api/incidents/` | GET, POST | List permitted SOS incidents or trigger a new SOS. |
+| `/api/incidents/{id}/acknowledge/` | POST | Security or eligible volunteers acknowledge an SOS. |
+| `/api/posts/` | GET, POST, PATCH | Safety feed and hazard reports. |
+| `/api/devices/` | GET, POST, PATCH, DELETE | Register/manage the current user's mobile devices. |
+| `/api/users/` | CRUD | Township-admin user management only. |
+
+Example Flutter login request body:
+
+```json
+{"username": "resident01", "password": "your-password"}
+```
+
+Example authenticated request header:
+
+```text
+Authorization: Token <token returned at login>
+```
 
 ## Scheduled processing
 

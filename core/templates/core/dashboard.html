@@ -12,168 +12,121 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body class="bg-gray-100">
-    <nav class="bg-blue-800 text-white p-4 shadow-md">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-xl font-bold">NeighbourShield Admin Dashboard</h1>
-            <div class="flex items-center gap-4">
-                <button id="openTownshipPanel" type="button" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold hover:bg-blue-600">☰ Township menu</button>
-                <span>Logged in as: {{ request.user.username }}</span>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mx-auto mt-8 p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- Left Side: The Map -->
-        <div class="bg-white rounded-lg shadow p-4">
-            <h2 class="text-xl font-semibold mb-4">Live Incident Map</h2>
-            <!-- Map Container (must have a defined height) -->
-            <div id="map" class="w-full h-[500px] rounded border"></div>
-        </div>
-
-        <!-- Right Side: The Table -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">Active SOS Incidents</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white">
-                    <thead class="bg-gray-800 text-white">
-                        <tr>
-                            <th class="py-3 px-4 text-left">Resident</th>
-                            <th class="py-3 px-4 text-left">Status</th>
-                            <th class="py-3 px-4 text-left">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-gray-700">
-                        {% for incident in incidents %}
-                        <tr class="border-b">
-                            <td class="py-3 px-4">{{ incident.user.username }}</td>
-                            <td class="py-3 px-4">
-                                <span class="px-2 py-1 rounded text-sm
-                                    {% if incident.status == 'pending' %} bg-red-200 text-red-800
-                                    {% elif incident.status == 'acknowledged' %} bg-yellow-200 text-yellow-800
-                                    {% else %} bg-green-200 text-green-800 {% endif %}">
-                                    {{ incident.status|title }}
-                                </span>
-                            </td>
-                            <td class="py-3 px-4">{{ incident.created_at|date:"M d, Y H:i" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="py-4 text-center text-gray-500">No active incidents.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
+    <div class="fixed left-0 top-0 h-full z-40">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-10 h-14 ml-0 rounded-r-md bg-blue-700 text-white flex items-center justify-center hover:bg-blue-600 focus:outline-none ring-2 ring-white/20 transition-transform duration-200">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-100 transform -translate-x-[15rem] transition-transform duration-200 z-40">
+            <div class="border-b border-slate-700 px-5 py-6 text-xl font-bold">NeighbourShield</div>
+            <nav class="p-3 space-y-2">
+                <a href="{% url 'dashboard' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Dashboard</a>
+                <a href="{% url 'township-management' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Township setup</a>
+                <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
+            </nav>
+        </aside>
     </div>
 
-    <!-- Slide-out township menu -->
-    <div id="townshipBackdrop" class="fixed inset-0 z-40 hidden bg-black/40"></div>
-    <aside id="townshipPanel" class="fixed right-0 top-0 z-50 h-full w-full max-w-md translate-x-full overflow-y-auto bg-white shadow-2xl transition-transform duration-300">
-        <div class="flex items-center justify-between bg-blue-800 p-5 text-white">
-            <div>
-                <h2 class="text-xl font-semibold">Township menu</h2>
-                <p class="text-sm text-blue-100">Create areas and properties</p>
+    <!-- WRAPPER FOR MAIN CONTENT -->
+    <div id="page-content" class="transition-all duration-200 ml-0">
+        <nav class="bg-blue-800 p-4 text-white shadow-md">
+            <div class="container mx-auto flex items-center justify-between">
+                <h1 class="text-xl font-bold">NeighbourShield Admin Dashboard</h1>
+                <span>Logged in as: {{ request.user.username }}</span>
             </div>
-            <button id="closeTownshipPanel" type="button" class="rounded p-2 text-2xl hover:bg-blue-700" aria-label="Close menu">×</button>
-        </div>
+        </nav>
 
-        {% if messages %}
-        <div class="p-4 pb-0">
-            {% for message in messages %}
-            <div class="rounded bg-green-100 text-green-800 p-3 text-sm">{{ message }}</div>
-            {% endfor %}
-        </div>
-        {% endif %}
+        <div class="container mx-auto mt-8 grid grid-cols-1 gap-6 p-4">
 
-        <div class="grid grid-cols-2 gap-2 p-4 border-b">
-            <button id="chooseArea" type="button" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Add area</button>
-            <button id="chooseProperty" type="button" class="rounded bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200">Add property</button>
-        </div>
+            <!-- Left Side: The Map -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <h2 class="text-xl font-semibold mb-4">Live Incident Map</h2>
+                <!-- Map Container (must have a defined height) -->
+                <div id="map" class="w-full h-[500px] rounded border"></div>
+            </div>
 
-        <section id="areaFormPanel" class="p-5">
-            <h3 class="text-lg font-semibold text-gray-800">Add area</h3>
-            <p class="text-sm text-gray-500 mt-1">The centre and radius create the dotted map boundary.</p>
-            <form method="post" class="mt-4 space-y-3">
-                {% csrf_token %}
-                <input type="hidden" name="form_type" value="area">
-                {% for field in area_form %}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+            <!-- Right Side: The Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">Active SOS Incidents</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-800 text-white">
+                            <tr>
+                                <th class="py-3 px-4 text-left">Resident</th>
+                                <th class="py-3 px-4 text-left">Status</th>
+                                <th class="py-3 px-4 text-left">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            {% for incident in incidents %}
+                            <tr class="border-b">
+                                <td class="py-3 px-4">{{ incident.user.username }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 rounded text-sm
+                                        {% if incident.status == 'pending' %} bg-red-200 text-red-800
+                                        {% elif incident.status == 'acknowledged' %} bg-yellow-200 text-yellow-800
+                                        {% else %} bg-green-200 text-green-800 {% endif %}">
+                                        {{ incident.status|title }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4">{{ incident.created_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="py-4 text-center text-gray-500">No active incidents.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                {% endfor %}
-                {% for error in area_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-800">Add area</button>
-            </form>
-        </section>
+            </div>
 
-        <section id="propertyFormPanel" class="hidden p-5">
-            <h3 class="text-lg font-semibold text-gray-800">Add property</h3>
-            <p class="text-sm text-gray-500 mt-1">Coordinates place the blue property pin.</p>
-            <form method="post" class="mt-4 space-y-3">
-                {% csrf_token %}
-                <input type="hidden" name="form_type" value="property">
-                {% for field in property_form %}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
-                </div>
-                {% endfor %}
-                {% for error in property_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-800">Add property</button>
-            </form>
-        </section>
-    </aside>
+        </div>
+    </div> <!-- END WRAPPER -->
+
+    <script>
+        (function(){
+            const toggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            const pageContent = document.getElementById('page-content');
+
+            if (!toggle || !sidebar) return;
+            toggle.addEventListener('click', function(e){
+                const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+                if (isOpen) {
+                    sidebar.classList.add('-translate-x-[15rem]');
+                    sidebar.classList.remove('translate-x-0');
+                    toggle.classList.remove('translate-x-[15rem]');
+                    icon.classList.remove('rotate-180');
+                    toggle.setAttribute('aria-expanded','false');
+
+                    // Remove margin to expand content
+                    if(pageContent) pageContent.classList.remove('ml-60');
+                } else {
+                    sidebar.classList.remove('-translate-x-[15rem]');
+                    sidebar.classList.add('translate-x-0');
+                    toggle.classList.add('translate-x-[15rem]');
+                    icon.classList.add('rotate-180');
+                    toggle.setAttribute('aria-expanded','true');
+
+                    // Add margin to shrink content and avoid overlap
+                    if(pageContent) pageContent.classList.add('ml-60');
+                }
+
+                // Tell Leaflet to resize the map after the transition ends
+                setTimeout(() => {
+                    if (typeof map !== 'undefined') {
+                        map.invalidateSize();
+                    }
+                }, 200);
+            });
+        })();
+    </script>
 
     <!-- Map Initialization Script -->
     <script>
-        const townshipPanel = document.getElementById('townshipPanel');
-        const townshipBackdrop = document.getElementById('townshipBackdrop');
-        const areaFormPanel = document.getElementById('areaFormPanel');
-        const propertyFormPanel = document.getElementById('propertyFormPanel');
-        const chooseArea = document.getElementById('chooseArea');
-        const chooseProperty = document.getElementById('chooseProperty');
-
-        function selectTownshipForm(formName) {
-            const isArea = formName === 'area';
-            areaFormPanel.classList.toggle('hidden', !isArea);
-            propertyFormPanel.classList.toggle('hidden', isArea);
-            chooseArea.className = isArea
-                ? 'rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white'
-                : 'rounded bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200';
-            chooseProperty.className = isArea
-                ? 'rounded bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200'
-                : 'rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white';
-        }
-
-        function openTownshipPanel(formName = 'area') {
-            selectTownshipForm(formName);
-            townshipBackdrop.classList.remove('hidden');
-            townshipPanel.classList.remove('translate-x-full');
-            document.body.classList.add('overflow-hidden');
-        }
-
-        function closeTownshipPanel() {
-            townshipBackdrop.classList.add('hidden');
-            townshipPanel.classList.add('translate-x-full');
-            document.body.classList.remove('overflow-hidden');
-        }
-
-        document.getElementById('openTownshipPanel').addEventListener('click', () => openTownshipPanel());
-        document.getElementById('closeTownshipPanel').addEventListener('click', closeTownshipPanel);
-        townshipBackdrop.addEventListener('click', closeTownshipPanel);
-        chooseArea.addEventListener('click', () => selectTownshipForm('area'));
-        chooseProperty.addEventListener('click', () => selectTownshipForm('property'));
-
-        {% if area_form.errors or property_form.errors %}
-        openTownshipPanel('{% if property_form.errors %}property{% else %}area{% endif %}');
-        {% endif %}
-
         // 1. Get the JSON data passed from Django
         const markersData = JSON.parse('{{ map_markers_json|escapejs }}');
         const propertyMarkersData = JSON.parse('{{ property_markers_json|escapejs }}');

@@ -1,12 +1,70 @@
+from django.contrib.auth import authenticate
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS
+from rest_framework.authtoken.models import Token
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Device, Property, User, Incident, SafetyPost
+from .models import Area, Device, Property, User, Incident, SafetyPost
 from .permissions import IsTownshipAdmin
-from .serializers import (DeviceSerializer, PropertySerializer, UserSerializer, IncidentSerializer,
-                          SafetyPostSerializer)
+from .serializers import (AreaSerializer, DeviceSerializer, LocationUpdateSerializer,
+                          MobileProfileSerializer, PropertySerializer, RegistrationSerializer,
+                          UserSerializer, IncidentSerializer, SafetyPostSerializer)
+
+
+class TokenLoginView(APIView):
+    """Flutter-friendly login that returns both a token and the mobile profile."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username', '')
+        password = request.data.get('password', '')
+        user = authenticate(request, username=username, password=password)
+        if not user or not user.is_active:
+            return Response({'detail': 'Invalid username or password.'}, status=status.HTTP_400_BAD_REQUEST)
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({'token': token.key, 'user': MobileProfileSerializer(user).data})
+
+
+class RegistrationView(APIView):
+    """Residents can create only resident accounts; roles remain admin controlled."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        token = Token.objects.create(user=user)
+        return Response({'token': token.key, 'user': MobileProfileSerializer(user).data},
+                        status=status.HTTP_201_CREATED)
+
+
+class MyProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(MobileProfileSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = MobileProfileSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class MyLocationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        serializer = LocationUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request.user.last_latitude = serializer.validated_data['latitude']
+        request.user.last_longitude = serializer.validated_data['longitude']
+        request.user.last_location_at = timezone.now()
+        request.user.save(update_fields=['last_latitude', 'last_longitude', 'last_location_at'])
+        return Response({'detail': 'Location updated.'})
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -15,10 +73,26 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsTownshipAdmin]
 
 
+class AreaViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Area.objects.all().order_by('name')
+    serializer_class = AreaSerializer
+    permission_classes = [IsAuthenticated]
+
+
 class PropertyViewSet(viewsets.ModelViewSet):
-    queryset = Property.objects.select_related('area').all()
     serializer_class = PropertySerializer
-    permission_classes = [IsTownshipAdmin]
+
+    def get_queryset(self):
+        queryset = Property.objects.select_related('area').all()
+        if self.request.user.is_township_admin:
+            return queryset
+        if self.request.user.residence_id:
+            return queryset.filter(pk=self.request.user.residence_id)
+        return queryset.none()
+
+    def get_permissions(self):
+        permission_class = IsAuthenticated if self.request.method in SAFE_METHODS else IsTownshipAdmin
+        return [permission_class()]
 
 
 class DeviceViewSet(viewsets.ModelViewSet):

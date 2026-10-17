@@ -7,9 +7,20 @@ from .forms import AreaRegistrationForm, PropertyRegistrationForm
 from .models import Area, Incident, Property
 
 
-@user_passes_test(lambda user: user.is_authenticated and user.is_township_admin,
-                  login_url='/admin/login/')
+township_admin_required = user_passes_test(
+    lambda user: user.is_authenticated and user.is_township_admin,
+    login_url='/admin/login/',
+)
+
+
+@township_admin_required
 def admin_dashboard(request):
+    # This view is read-only. Area/property registration lives at /township/.
+    return _dashboard_context(request)
+
+
+@township_admin_required
+def township_management(request):
     area_form = AreaRegistrationForm(prefix='area')
     property_form = PropertyRegistrationForm(prefix='property')
 
@@ -20,13 +31,21 @@ def admin_dashboard(request):
             if area_form.is_valid():
                 area = area_form.save()
                 messages.success(request, f'Area "{area.name}" was added.')
-                return redirect('dashboard')
+                return redirect('township-management')
         elif form_type == 'property':
             property_form = PropertyRegistrationForm(request.POST, prefix='property')
             if property_form.is_valid():
                 registered_property = property_form.save()
                 messages.success(request, f'Property "{registered_property}" was added.')
-                return redirect('dashboard')
+                return redirect('township-management')
+
+    return render(request, 'core/township_management.html', {
+        'area_form': area_form,
+        'property_form': property_form,
+    })
+
+
+def _dashboard_context(request):
     # Fetch recent pending and acknowledged incidents
     incidents = Incident.objects.exclude(status='resolved').order_by('-created_at')
 
@@ -76,7 +95,5 @@ def admin_dashboard(request):
         'map_markers_json': json.dumps(map_markers),  # Pass JSON to the template
         'property_markers_json': json.dumps(property_markers),
         'area_boundaries_json': json.dumps(area_boundaries),
-        'area_form': area_form,
-        'property_form': property_form,
     }
     return render(request, 'core/dashboard.html', context)

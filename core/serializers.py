@@ -1,5 +1,12 @@
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import Device, Property, User, Incident, SafetyPost
+from .models import Area, Device, Property, User, Incident, SafetyPost
+
+
+class AreaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Area
+        fields = ('id', 'name', 'center_latitude', 'center_longitude', 'radius_m')
 
 
 class PropertySerializer(serializers.ModelSerializer):
@@ -23,6 +30,47 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'role', 'phone_number', 'unit_address', 'area', 'residence',
                   'is_volunteer_opted_in', 'is_verified_volunteer')
         read_only_fields = ('role', 'is_verified_volunteer')
+
+
+class MobileProfileSerializer(serializers.ModelSerializer):
+    """The fields a resident may view or update for their own account."""
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone_number',
+                  'unit_address', 'area', 'residence', 'is_volunteer_opted_in',
+                  'is_verified_volunteer')
+        read_only_fields = ('id', 'username', 'role', 'area', 'residence', 'is_verified_volunteer')
+
+
+class RegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, style={'input_type': 'password'})
+    residence = serializers.PrimaryKeyRelatedField(
+        queryset=Property.objects.filter(is_active=True), required=False, allow_null=True
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'password', 'email', 'first_name', 'last_name', 'phone_number',
+                  'unit_address', 'residence')
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def create(self, validated_data):
+        registered_property = validated_data.pop('residence', None)
+        user = User(**validated_data, role='resident', residence=registered_property)
+        if registered_property:
+            user.area = registered_property.area
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
+
+class LocationUpdateSerializer(serializers.Serializer):
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-90, max_value=90)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-180, max_value=180)
 
 
 class DeviceSerializer(serializers.ModelSerializer):
