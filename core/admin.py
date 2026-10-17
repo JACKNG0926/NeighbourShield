@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 
-from .models import (User, Area, Device, EscalationPolicy, Incident, Notification,
+from .models import (User, Area, Property, Device, EscalationPolicy, Incident, Notification,
                      Acknowledgement, IncidentLog, SafetyPost, BroadcastRecipient)
 
 
@@ -48,19 +48,19 @@ class CustomUserAdmin(UserAdmin):
     # NOT shown anywhere in the admin.
     fieldsets = UserAdmin.fieldsets + (
         ('Township Info', {'fields': (
-            'role', 'phone_number', 'unit_address', 'area',
+            'role', 'phone_number', 'unit_address', 'area', 'residence',
             'is_volunteer_opted_in', 'is_verified_volunteer',
             'volunteer_verified_by', 'volunteer_verified_at', 'last_location_at')}),
     )
     # Without this, users created in the admin get no township fields.
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Township Info', {'fields': ('role', 'phone_number', 'unit_address', 'area')}),
+        ('Township Info', {'fields': ('role', 'phone_number', 'unit_address', 'area', 'residence')}),
     )
-    list_display = ('username', 'email', 'role', 'area', 'is_volunteer_opted_in',
+    list_display = ('username', 'email', 'role', 'area', 'residence', 'is_volunteer_opted_in',
                     'is_verified_volunteer', 'is_active', 'is_staff')
     list_filter = ('role', 'area', 'is_volunteer_opted_in', 'is_verified_volunteer',
                    'is_active', 'is_staff')
-    list_select_related = ('area',)
+    list_select_related = ('area', 'residence')
 
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
@@ -71,6 +71,9 @@ class CustomUserAdmin(UserAdmin):
         return readonly
 
     def save_model(self, request, obj, form, change):
+        if obj.residence_id:
+            # A resident's area always follows their registered property.
+            obj.area = obj.residence.area
         if 'is_verified_volunteer' in form.changed_data:
             if obj.is_verified_volunteer:
                 obj.volunteer_verified_by = request.user
@@ -94,6 +97,14 @@ class DeviceAdmin(ReadOnlyAdmin):
 class AreaAdmin(admin.ModelAdmin):
     list_display = ('name', 'center_latitude', 'center_longitude', 'radius_m')
     search_fields = ('name',)
+
+
+@admin.register(Property)
+class PropertyAdmin(admin.ModelAdmin):
+    list_display = ('unit_number', 'address_line', 'area', 'property_type', 'is_active')
+    list_filter = ('area', 'property_type', 'is_active')
+    search_fields = ('unit_number', 'address_line', 'postal_code')
+    list_select_related = ('area',)
 
 
 # ---------------------------------------------------------------------

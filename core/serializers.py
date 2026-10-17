@@ -1,10 +1,26 @@
 from rest_framework import serializers
-from .models import Device, User, Incident, SafetyPost
+from .models import Device, Property, User, Incident, SafetyPost
+
+
+class PropertySerializer(serializers.ModelSerializer):
+    resident_count = serializers.IntegerField(source='residents.count', read_only=True)
+
+    class Meta:
+        model = Property
+        fields = ('id', 'area', 'unit_number', 'address_line', 'postal_code', 'property_type',
+                  'latitude', 'longitude', 'is_active', 'created_at', 'resident_count')
+        read_only_fields = ('id', 'created_at', 'resident_count')
 
 class UserSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        registered_property = attrs.get('residence')
+        if registered_property:
+            attrs['area'] = registered_property.area
+        return attrs
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'role', 'phone_number', 'unit_address', 'area',
+        fields = ('id', 'username', 'role', 'phone_number', 'unit_address', 'area', 'residence',
                   'is_volunteer_opted_in', 'is_verified_volunteer')
         read_only_fields = ('role', 'is_verified_volunteer')
 

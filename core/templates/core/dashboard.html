@@ -13,9 +13,12 @@
 </head>
 <body class="bg-gray-100">
     <nav class="bg-blue-800 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between">
+        <div class="container mx-auto flex items-center justify-between">
             <h1 class="text-xl font-bold">NeighbourShield Admin Dashboard</h1>
-            <span>Logged in as: {{ request.user.username }}</span>
+            <div class="flex items-center gap-4">
+                <button id="openTownshipPanel" type="button" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold hover:bg-blue-600">☰ Township menu</button>
+                <span>Logged in as: {{ request.user.username }}</span>
+            </div>
         </div>
     </nav>
 
@@ -63,27 +66,129 @@
                 </table>
             </div>
         </div>
+
     </div>
+
+    <!-- Slide-out township menu -->
+    <div id="townshipBackdrop" class="fixed inset-0 z-40 hidden bg-black/40"></div>
+    <aside id="townshipPanel" class="fixed right-0 top-0 z-50 h-full w-full max-w-md translate-x-full overflow-y-auto bg-white shadow-2xl transition-transform duration-300">
+        <div class="flex items-center justify-between bg-blue-800 p-5 text-white">
+            <div>
+                <h2 class="text-xl font-semibold">Township menu</h2>
+                <p class="text-sm text-blue-100">Create areas and properties</p>
+            </div>
+            <button id="closeTownshipPanel" type="button" class="rounded p-2 text-2xl hover:bg-blue-700" aria-label="Close menu">×</button>
+        </div>
+
+        {% if messages %}
+        <div class="p-4 pb-0">
+            {% for message in messages %}
+            <div class="rounded bg-green-100 text-green-800 p-3 text-sm">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-2 gap-2 p-4 border-b">
+            <button id="chooseArea" type="button" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Add area</button>
+            <button id="chooseProperty" type="button" class="rounded bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200">Add property</button>
+        </div>
+
+        <section id="areaFormPanel" class="p-5">
+            <h3 class="text-lg font-semibold text-gray-800">Add area</h3>
+            <p class="text-sm text-gray-500 mt-1">The centre and radius create the dotted map boundary.</p>
+            <form method="post" class="mt-4 space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="area">
+                {% for field in area_form %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                </div>
+                {% endfor %}
+                {% for error in area_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+                <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-800">Add area</button>
+            </form>
+        </section>
+
+        <section id="propertyFormPanel" class="hidden p-5">
+            <h3 class="text-lg font-semibold text-gray-800">Add property</h3>
+            <p class="text-sm text-gray-500 mt-1">Coordinates place the blue property pin.</p>
+            <form method="post" class="mt-4 space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="property">
+                {% for field in property_form %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                </div>
+                {% endfor %}
+                {% for error in property_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+                <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-800">Add property</button>
+            </form>
+        </section>
+    </aside>
 
     <!-- Map Initialization Script -->
     <script>
+        const townshipPanel = document.getElementById('townshipPanel');
+        const townshipBackdrop = document.getElementById('townshipBackdrop');
+        const areaFormPanel = document.getElementById('areaFormPanel');
+        const propertyFormPanel = document.getElementById('propertyFormPanel');
+        const chooseArea = document.getElementById('chooseArea');
+        const chooseProperty = document.getElementById('chooseProperty');
+
+        function selectTownshipForm(formName) {
+            const isArea = formName === 'area';
+            areaFormPanel.classList.toggle('hidden', !isArea);
+            propertyFormPanel.classList.toggle('hidden', isArea);
+            chooseArea.className = isArea
+                ? 'rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white'
+                : 'rounded bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200';
+            chooseProperty.className = isArea
+                ? 'rounded bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200'
+                : 'rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white';
+        }
+
+        function openTownshipPanel(formName = 'area') {
+            selectTownshipForm(formName);
+            townshipBackdrop.classList.remove('hidden');
+            townshipPanel.classList.remove('translate-x-full');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeTownshipPanel() {
+            townshipBackdrop.classList.add('hidden');
+            townshipPanel.classList.add('translate-x-full');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        document.getElementById('openTownshipPanel').addEventListener('click', () => openTownshipPanel());
+        document.getElementById('closeTownshipPanel').addEventListener('click', closeTownshipPanel);
+        townshipBackdrop.addEventListener('click', closeTownshipPanel);
+        chooseArea.addEventListener('click', () => selectTownshipForm('area'));
+        chooseProperty.addEventListener('click', () => selectTownshipForm('property'));
+
+        {% if area_form.errors or property_form.errors %}
+        openTownshipPanel('{% if property_form.errors %}property{% else %}area{% endif %}');
+        {% endif %}
+
         // 1. Get the JSON data passed from Django
         const markersData = JSON.parse('{{ map_markers_json|escapejs }}');
+        const propertyMarkersData = JSON.parse('{{ property_markers_json|escapejs }}');
+        const areaBoundariesData = JSON.parse('{{ area_boundaries_json|escapejs }}');
 
         // 2. Initialize the map (Default center: Malaysia/Kuala Lumpur roughly)
         // If there are incidents, we will center the map on the first incident later
         let mapCenter = [3.1390, 101.6869];
         let zoomLevel = 10;
 
-        if (markersData.length > 0) {
-            mapCenter = [markersData[0].lat, markersData[0].lng];
-            zoomLevel = 14; // Zoom in closer if we have active incidents
-        }
-
         const map = L.map('map').setView(mapCenter, zoomLevel);
+        const mapBounds = [];
 
         // 3. Add the OpenStreetMap tiles (the actual map images)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4n83_1_f56c163dd4fc94a222f8a7e0', {
             maxZoom: 19,
             attribution: '© OpenStreetMap contributors, © CARTO'
         }).addTo(map);
@@ -107,7 +212,55 @@
                 <strong>Status:</strong> ${markerInfo.status.toUpperCase()}<br>
                 <strong>Time:</strong> ${markerInfo.time}
             `);
+            mapBounds.push([markerInfo.lat, markerInfo.lng]);
         });
+
+        // Registered homes are shown as blue pins.
+        propertyMarkersData.forEach(function(propertyInfo) {
+            const propertyIcon = L.divIcon({
+                className: '',
+                html: '<div style="background:#2563eb;color:#fff;border:2px solid #fff;border-radius:50% 50% 50% 0;box-shadow:0 1px 4px #555;transform:rotate(-45deg);width:24px;height:24px;line-height:24px;text-align:center"><span style="display:inline-block;transform:rotate(45deg)">⌂</span></div>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 24],
+                popupAnchor: [0, -24]
+            });
+            const marker = L.marker([propertyInfo.lat, propertyInfo.lng], {icon: propertyIcon}).addTo(map);
+
+            marker.bindPopup(`
+                <strong>Property:</strong> ${propertyInfo.unit_number}<br>
+                <strong>Address:</strong> ${propertyInfo.address}<br>
+                <strong>Area:</strong> ${propertyInfo.area}<br>
+                <strong>Residents:</strong> ${propertyInfo.resident_count}
+            `);
+            mapBounds.push([propertyInfo.lat, propertyInfo.lng]);
+        });
+
+        // Each area is drawn from its stored centre point and radius in metres.
+        areaBoundariesData.forEach(function(areaInfo) {
+            const center = [areaInfo.lat, areaInfo.lng];
+            const boundary = L.circle(center, {
+                radius: areaInfo.radius_m,
+                color: '#7c3aed',
+                fillColor: '#a78bfa',
+                fillOpacity: 0.08,
+                weight: 2,
+                dashArray: '6, 8'
+            }).addTo(map);
+
+            L.circleMarker(center, {
+                color: '#7c3aed',
+                fillColor: '#7c3aed',
+                fillOpacity: 1,
+                radius: 4
+            }).addTo(map).bindPopup(`<strong>${areaInfo.name}</strong><br>Area centre · ${areaInfo.radius_m} m radius`);
+
+            boundary.bindTooltip(areaInfo.name, {sticky: true});
+            mapBounds.push(boundary.getBounds());
+        });
+
+        if (mapBounds.length > 0) {
+            map.fitBounds(mapBounds, {padding: [24, 24], maxZoom: 15});
+        }
     </script>
 </body>
 </html>

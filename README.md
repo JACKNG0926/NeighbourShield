@@ -9,6 +9,10 @@ NeighbourShield is a Django REST backend for a township safety system. It record
 - `core/models.py` — SOS escalation and audit rules; this is the system's business-rule layer.
 - `core/views.py` — authenticated API endpoints under `/api/`.
 
+## Registering a property
+
+Township administrators create an `Area`, then add its houses, apartments, or townhouses in **Admin → Properties**. When a resident is assigned to a property, their area is set from that property. One property can have multiple residents.
+
 ## Local setup
 
 Install the dependencies in a fresh Python 3.12 virtual environment, then run migrations:

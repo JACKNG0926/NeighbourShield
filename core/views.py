@@ -3,14 +3,21 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Device, User, Incident, SafetyPost
+from .models import Device, Property, User, Incident, SafetyPost
 from .permissions import IsTownshipAdmin
-from .serializers import DeviceSerializer, UserSerializer, IncidentSerializer, SafetyPostSerializer
+from .serializers import (DeviceSerializer, PropertySerializer, UserSerializer, IncidentSerializer,
+                          SafetyPostSerializer)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsTownshipAdmin]
+
+
+class PropertyViewSet(viewsets.ModelViewSet):
+    queryset = Property.objects.select_related('area').all()
+    serializer_class = PropertySerializer
     permission_classes = [IsTownshipAdmin]
 
 

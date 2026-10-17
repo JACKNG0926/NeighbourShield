@@ -21,6 +21,39 @@ class Area(models.Model):
         return self.name
 
 
+class Property(models.Model):
+    """A residential unit registered by the township before residents are assigned."""
+    PROPERTY_TYPES = (
+        ('house', 'House'), ('apartment', 'Apartment / condominium'),
+        ('townhouse', 'Townhouse'), ('other', 'Other'),
+    )
+
+    area = models.ForeignKey(Area, on_delete=models.PROTECT, related_name='properties')
+    unit_number = models.CharField(max_length=100)
+    address_line = models.CharField(max_length=255)
+    postal_code = models.CharField(max_length=20, blank=True)
+    property_type = models.CharField(max_length=20, choices=PROPERTY_TYPES, default='house')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['area__name', 'unit_number']
+        constraints = [
+            models.UniqueConstraint(fields=['area', 'unit_number'], name='property_area_unit_unique'),
+            models.CheckConstraint(
+                condition=models.Q(latitude__isnull=True) | models.Q(latitude__gte=-90, latitude__lte=90),
+                name='property_latitude_range'),
+            models.CheckConstraint(
+                condition=models.Q(longitude__isnull=True) | models.Q(longitude__gte=-180, longitude__lte=180),
+                name='property_longitude_range'),
+        ]
+
+    def __str__(self):
+        return f'{self.unit_number}, {self.address_line}'
+
+
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('resident', 'Resident'),
@@ -33,6 +66,8 @@ class User(AbstractUser):
     unit_address = models.CharField(max_length=255, blank=True)
     area = models.ForeignKey('Area', null=True, blank=True,
                              on_delete=models.SET_NULL, related_name='residents')
+    residence = models.ForeignKey('Property', null=True, blank=True,
+                                  on_delete=models.SET_NULL, related_name='residents')
 
     # Volunteer programme
     is_volunteer_opted_in = models.BooleanField(default=False)    # user chooses
@@ -50,6 +85,11 @@ class User(AbstractUser):
 
     def __str__(self):
         return f'{self.username} ({self.role})'
+
+    def clean(self):
+        super().clean()
+        if self.residence_id and self.area_id and self.residence.area_id != self.area_id:
+            raise ValidationError({'residence': 'The selected property belongs to a different area.'})
 
     # ---- helpers -----------------------------------------------------
     @property
