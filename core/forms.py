@@ -1,7 +1,6 @@
 from django import forms
 
-from .models import Area, Property
-
+from .models import Area, Property, SafetyPost
 
 INPUT_CLASS = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-600 focus:ring-blue-600'
 
@@ -41,4 +40,22 @@ class PropertyRegistrationForm(forms.ModelForm):
             'property_type': forms.Select(attrs={'class': INPUT_CLASS}),
             'latitude': forms.NumberInput(attrs={'class': INPUT_CLASS, 'step': '0.000001'}),
             'longitude': forms.NumberInput(attrs={'class': INPUT_CLASS, 'step': '0.000001'}),
+        }
+
+class BroadcastForm(forms.ModelForm):
+    affected_areas = forms.ModelMultipleChoiceField(
+        queryset=Area.objects.all(),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'mr-2'}),
+        required=False,
+        help_text="Leave blank to notify the entire township."
+    )
+
+    class Meta:
+        model = SafetyPost
+        fields = ['category', 'severity', 'title', 'description', 'affected_areas']
+        widgets = {
+            'category': forms.Select(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm'}),
+            'severity': forms.Select(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm'}),
+            'title': forms.TextInput(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border'}),
+            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border', 'rows': 3}),
         }

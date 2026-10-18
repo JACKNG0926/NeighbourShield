@@ -215,6 +215,9 @@ class Incident(models.Model):
     @classmethod
     def create_sos(cls, user, latitude, longitude, message='', incident_type='other'):
         """Create the incident, start the escalation clock and write the first log line."""
+        # Local import to prevent circular dependency issues
+        from .services import dispatch_sos_notifications
+
         policy = EscalationPolicy.get_solo()
         with transaction.atomic():
             incident = cls.objects.create(
@@ -223,6 +226,10 @@ class Incident(models.Model):
                 next_escalation_at=timezone.now() + timedelta(seconds=policy.ack_timeout_seconds))
             IncidentLog.objects.create(incident=incident, action='triggered', actor=user,
                                        detail='SOS triggered')
+
+        # Trigger wave 0 notifications immediately after database commit
+        dispatch_sos_notifications(incident)
+
         return incident
 
     @classmethod

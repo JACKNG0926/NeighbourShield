@@ -20,12 +20,30 @@ Install the dependencies in a fresh Python 3.12 virtual environment, then run mi
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
+pip install pymysql
 python manage.py migrate
-python manage.py runserver
+python manage.py run_escalation
 ```
 
 With no database environment variables, development uses the local `db.sqlite3`. Copy `.env.example` into your deployment's secret store and set `DJANGO_DB_ENGINE` plus the MySQL settings to use MySQL.
+
+## Running the System (Two Terminals Required):
+
+To run the system locally, you need to run the web server and the background escalation engine simultaneously.
+
+```
+Terminal 1 (Web API & Dashboard):
+PowerShell
+.\venv\Scripts\Activate.ps1
+python manage.py runserver 192.168.0.5:8000
+```
+```
+Terminal 2 (Escalation & Notification Worker):
+PowerShell
+.\venv\Scripts\Activate.ps1
+python manage.py run_escalation
+```
 
 ## API safety rules
 

@@ -4,7 +4,8 @@ from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count
 from .forms import AreaRegistrationForm, PropertyRegistrationForm
-from .models import Area, Incident, Property
+from .models import Area, Incident, Property,SafetyPost
+from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
 
 
 township_admin_required = user_passes_test(
@@ -42,6 +43,32 @@ def township_management(request):
     return render(request, 'core/township_management.html', {
         'area_form': area_form,
         'property_form': property_form,
+    })
+
+@township_admin_required
+def emergency_broadcast(request):
+    if request.method == 'POST':
+        form = BroadcastForm(request.POST)
+        if form.is_valid():
+            broadcast = form.save(commit=False)
+            broadcast.author = request.user
+            broadcast.post_type = 'broadcast'
+            broadcast.status = 'open'
+            broadcast.save()
+            form.save_m2m()  # Required to save the ManyToMany affected_areas field
+
+            # TODO: Call FCM push notification service here to notify users in affected_areas
+
+            messages.success(request, f'Emergency broadcast "{broadcast.title}" was sent successfully.')
+            return redirect('emergency-broadcast')
+    else:
+        form = BroadcastForm()
+
+    recent_broadcasts = SafetyPost.objects.filter(post_type='broadcast').order_by('-created_at')[:10]
+
+    return render(request, 'core/broadcast.html', {
+        'form': form,
+        'recent_broadcasts': recent_broadcasts,
     })
 
 

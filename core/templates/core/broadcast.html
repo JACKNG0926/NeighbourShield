@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Broadcast | NeighbourShield</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="fixed left-0 top-0 h-full z-40">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-10 h-14 ml-0 rounded-r-md bg-blue-700 text-white flex items-center justify-center hover:bg-blue-600 focus:outline-none ring-2 ring-white/20 transition-transform duration-200">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-100 transform -translate-x-[15rem] transition-transform duration-200 z-40">
+            <div class="border-b border-slate-700 px-5 py-6 text-xl font-bold">NeighbourShield</div>
+            <nav class="space-y-2 p-3">
+                <a href="{% url 'dashboard' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Dashboard</a>
+                <a href="{% url 'township-management' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Township setup</a>
+                <a href="{% url 'emergency-broadcast' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Broadcast Alerts</a>
+                <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
+            </nav>
+        </aside>
+    </div>
+
+    <!-- WRAPPER FOR MAIN CONTENT -->
+    <div id="page-content" class="transition-all duration-200 ml-0">
+        <header class="bg-red-800 p-4 text-white shadow-md">
+            <div class="container mx-auto flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-bold">Emergency Broadcast</h1>
+                    <p class="text-sm text-red-100">Send urgent push notifications to residents.</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto max-w-6xl p-4 lg:p-8">
+            {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                <div class="rounded bg-green-100 p-3 text-green-800">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <!-- Send Broadcast Form -->
+                <section class="rounded-lg bg-white p-6 shadow">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Compose Alert</h2>
+                    <form method="post" class="space-y-4">
+                        {% csrf_token %}
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Category</label>
+                                {{ form.category }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Severity</label>
+                                {{ form.severity }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Title</label>
+                            {{ form.title }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Message Description</label>
+                            {{ form.description }}
+                        </div>
+
+                        <div class="p-4 bg-gray-50 border rounded">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Affected Areas (Optional)</label>
+                            <div class="max-h-32 overflow-y-auto space-y-1 text-sm">
+                                {{ form.affected_areas }}
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">{{ form.affected_areas.help_text }}</p>
+                        </div>
+
+                        <button type="submit" class="w-full rounded bg-red-700 px-4 py-3 font-bold text-white hover:bg-red-800 uppercase tracking-wide">
+                            Send Broadcast
+                        </button>
+                    </form>
+                </section>
+
+                <!-- History Table -->
+                <section class="rounded-lg bg-white shadow overflow-hidden h-fit">
+                    <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">Recent Broadcasts</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white text-sm">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="py-2 px-4 text-left">Title</th>
+                                    <th class="py-2 px-4 text-left">Severity</th>
+                                    <th class="py-2 px-4 text-left">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-gray-700">
+                                {% for broadcast in recent_broadcasts %}
+                                <tr class="border-b">
+                                    <td class="py-2 px-4 font-medium">{{ broadcast.title }}</td>
+                                    <td class="py-2 px-4">
+                                        <span class="px-2 py-1 rounded text-xs
+                                            {% if broadcast.severity == 'critical' %} bg-red-200 text-red-800
+                                            {% elif broadcast.severity == 'warning' %} bg-yellow-200 text-yellow-800
+                                            {% else %} bg-blue-200 text-blue-800 {% endif %}">
+                                            {{ broadcast.severity|title }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2 px-4">{{ broadcast.created_at|date:"M d, H:i" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="py-4 text-center text-gray-500">No broadcasts sent yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        (function(){
+            const toggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            const pageContent = document.getElementById('page-content');
+
+            if (!toggle || !sidebar) return;
+            toggle.addEventListener('click', function(e){
+                const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+                if (isOpen) {
+                    sidebar.classList.add('-translate-x-[15rem]');
+                    sidebar.classList.remove('translate-x-0');
+                    toggle.classList.remove('translate-x-[15rem]');
+                    icon.classList.remove('rotate-180');
+                    toggle.setAttribute('aria-expanded','false');
+                    if(pageContent) pageContent.classList.remove('ml-60');
+                } else {
+                    sidebar.classList.remove('-translate-x-[15rem]');
+                    sidebar.classList.add('translate-x-0');
+                    toggle.classList.add('translate-x-[15rem]');
+                    icon.classList.add('rotate-180');
+                    toggle.setAttribute('aria-expanded','true');
+                    if(pageContent) pageContent.classList.add('ml-60');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
