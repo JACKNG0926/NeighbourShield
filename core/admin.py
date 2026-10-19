@@ -34,6 +34,14 @@ class ReadOnlyInline(admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
+@admin.action(description='Approve selected users as volunteers')
+def approve_volunteers(modeladmin, request, queryset):
+    queryset.update(
+        is_volunteer_opted_in=True,
+        is_verified_volunteer=True,
+        volunteer_verified_by=request.user,
+        volunteer_verified_at=timezone.now()
+    )
 
 def _is_township_admin(user):
     return user.is_superuser or getattr(user, 'role', '') == 'admin'
@@ -61,6 +69,8 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ('role', 'area', 'is_volunteer_opted_in', 'is_verified_volunteer',
                    'is_active', 'is_staff')
     list_select_related = ('area', 'residence')
+
+    actions = [approve_volunteers]
 
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))

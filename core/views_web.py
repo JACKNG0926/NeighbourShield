@@ -6,6 +6,8 @@ from django.db.models import Count
 from .forms import AreaRegistrationForm, PropertyRegistrationForm
 from .models import Area, Incident, Property,SafetyPost
 from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
+from django.utils import timezone
+from .models import Area, Incident, Property, SafetyPost, User
 
 
 township_admin_required = user_passes_test(
@@ -124,3 +126,29 @@ def _dashboard_context(request):
         'area_boundaries_json': json.dumps(area_boundaries),
     }
     return render(request, 'core/dashboard.html', context)
+
+
+@township_admin_required
+def volunteer_applications(request):
+    if request.method == 'POST':
+        # Grab the user ID submitted from the HTML form button
+        user_id = request.POST.get('user_id')
+        if user_id:
+            user = User.objects.get(id=user_id)
+            user.is_verified_volunteer = True
+            user.volunteer_verified_by = request.user
+            user.volunteer_verified_at = timezone.now()
+            user.save(update_fields=['is_verified_volunteer', 'volunteer_verified_by', 'volunteer_verified_at'])
+
+            messages.success(request, f'Approved {user.username} as a volunteer.')
+        return redirect('volunteer_applications')
+
+    # Query only users who opted in but aren't verified yet
+    pending_applications = User.objects.filter(
+        is_volunteer_opted_in=True,
+        is_verified_volunteer=False
+    )
+
+    return render(request, 'core/volunteer_applications.html', {
+        'pending_applications': pending_applications
+    })

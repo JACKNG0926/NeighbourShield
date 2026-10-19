@@ -155,3 +155,24 @@ class SafetyPostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+
+class VolunteerApplicationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if user.is_verified_volunteer:
+            return Response(
+                {"detail": "You are already a verified volunteer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.is_volunteer_opted_in = True
+        user.save(update_fields=['is_volunteer_opted_in'])
+
+        return Response(
+            {"detail": "Volunteer application submitted successfully."},
+            status=status.HTTP_200_OK
+        )

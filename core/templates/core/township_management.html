@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Township setup | NeighbourShield</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Add Leaflet Map CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body class="bg-gray-100">
     <div class="fixed left-0 top-0 h-full z-40">
@@ -18,6 +22,8 @@
             <nav class="space-y-2 p-3">
                 <a href="{% url 'dashboard' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Dashboard</a>
                 <a href="{% url 'township-management' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Township setup</a>
+                <a href="{% url 'volunteer_applications' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Volunteer Apps</a>
+                <a href="{% url 'emergency-broadcast' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Broadcast Alerts</a>
                 <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
             </nav>
         </aside>
@@ -29,13 +35,13 @@
             <div class="container mx-auto flex items-center justify-between">
                 <div>
                     <h1 class="text-xl font-bold">Township setup</h1>
-                    <p class="text-sm text-blue-100">Create areas before registering their properties.</p>
+                    <p class="text-sm text-blue-100">Click on the maps to auto-fill coordinates, then create your areas and properties.</p>
                 </div>
                 <a href="{% url 'dashboard' %}" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold hover:bg-blue-600">Back to dashboard</a>
             </div>
         </header>
 
-        <main class="container mx-auto max-w-6xl p-4 lg:p-8">
+        <main class="container mx-auto max-w-4xl p-4 lg:p-8">
             {% if messages %}
             <div class="mb-6 space-y-2">
                 {% for message in messages %}
@@ -44,10 +50,26 @@
             </div>
             {% endif %}
 
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <section class="rounded-lg bg-white p-6 shadow">
+            <!-- TABS NAVIGATION -->
+            <div class="mb-6 flex border-b border-gray-300">
+                <button id="tab-area" class="px-6 py-3 font-semibold text-blue-700 border-b-2 border-blue-700 focus:outline-none">
+                    Add Area
+                </button>
+                <button id="tab-property" class="px-6 py-3 font-semibold text-gray-500 hover:text-blue-700 focus:outline-none">
+                    Add Property
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6">
+
+                <!-- AREA SECTION -->
+                <section id="section-area" class="rounded-lg bg-white p-6 shadow">
                     <h2 class="text-xl font-semibold text-gray-900">Add area</h2>
-                    <p class="mt-1 text-sm text-gray-600">Its centre coordinate and radius are shown as a dotted boundary on the dashboard map.</p>
+                    <p class="mb-4 mt-1 text-sm text-gray-600">Its centre coordinate and radius are shown as a dotted boundary on the dashboard map.</p>
+
+                    <!-- Area Map -->
+                    <div id="area-map" class="h-80 w-full rounded border border-gray-300"></div>
+
                     <form method="post" class="mt-5 space-y-4">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="area">
@@ -63,9 +85,14 @@
                     </form>
                 </section>
 
-                <section class="rounded-lg bg-white p-6 shadow">
+                <!-- PROPERTY SECTION -->
+                <section id="section-property" class="rounded-lg bg-white p-6 shadow hidden">
                     <h2 class="text-xl font-semibold text-gray-900">Add property</h2>
-                    <p class="mt-1 text-sm text-gray-600">Choose an area, then enter the coordinate where the blue property pin should appear.</p>
+                    <p class="mb-4 mt-1 text-sm text-gray-600">Choose an area, then enter the coordinate where the blue property pin should appear.</p>
+
+                    <!-- Property Map -->
+                    <div id="property-map" class="h-80 w-full rounded border border-gray-300"></div>
+
                     <form method="post" class="mt-5 space-y-4">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="property">
@@ -85,6 +112,46 @@
     </div> <!-- END WRAPPER -->
 
     <script>
+        // Tab Switching Logic
+        const tabArea = document.getElementById('tab-area');
+        const tabProperty = document.getElementById('tab-property');
+        const sectionArea = document.getElementById('section-area');
+        const sectionProperty = document.getElementById('section-property');
+
+        function switchTab(showArea) {
+            if (showArea) {
+                // Show Area, Hide Property
+                sectionArea.classList.remove('hidden');
+                sectionProperty.classList.add('hidden');
+
+                // Style Tabs
+                tabArea.classList.add('text-blue-700', 'border-b-2', 'border-blue-700');
+                tabArea.classList.remove('text-gray-500');
+                tabProperty.classList.add('text-gray-500');
+                tabProperty.classList.remove('text-blue-700', 'border-b-2', 'border-blue-700');
+
+                // Fix map rendering bug when unhiding
+                setTimeout(() => { areaMap.invalidateSize(); }, 50);
+            } else {
+                // Show Property, Hide Area
+                sectionProperty.classList.remove('hidden');
+                sectionArea.classList.add('hidden');
+
+                // Style Tabs
+                tabProperty.classList.add('text-blue-700', 'border-b-2', 'border-blue-700');
+                tabProperty.classList.remove('text-gray-500');
+                tabArea.classList.add('text-gray-500');
+                tabArea.classList.remove('text-blue-700', 'border-b-2', 'border-blue-700');
+
+                // Fix map rendering bug when unhiding
+                setTimeout(() => { propertyMap.invalidateSize(); }, 50);
+            }
+        }
+
+        tabArea.addEventListener('click', () => switchTab(true));
+        tabProperty.addEventListener('click', () => switchTab(false));
+
+        // Sidebar Toggle
         (function(){
             const toggle = document.getElementById('sidebar-toggle');
             const sidebar = document.getElementById('sidebar');
@@ -100,7 +167,6 @@
                     toggle.classList.remove('translate-x-[15rem]');
                     icon.classList.remove('rotate-180');
                     toggle.setAttribute('aria-expanded','false');
-
                     if(pageContent) pageContent.classList.remove('ml-60');
                 } else {
                     sidebar.classList.remove('-translate-x-[15rem]');
@@ -108,11 +174,59 @@
                     toggle.classList.add('translate-x-[15rem]');
                     icon.classList.add('rotate-180');
                     toggle.setAttribute('aria-expanded','true');
-
                     if(pageContent) pageContent.classList.add('ml-60');
                 }
+
+                // Tell both Leaflet maps to redraw after sidebar animates
+                setTimeout(() => {
+                    areaMap.invalidateSize();
+                    propertyMap.invalidateSize();
+                }, 200);
             });
         })();
+
+        // Shared Map Configuration
+        const defaultLocation = [3.1390, 101.6869]; // Default to KL
+        const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4n83_1_f56c163dd4fc94a222f8a7e0';
+        const tileOptions = { maxZoom: 19, attribution: '© OpenStreetMap contributors, © CARTO' };
+
+        // --- Area Map Initialization ---
+        let areaMarker = null;
+        const areaMap = L.map('area-map').setView(defaultLocation, 13);
+        L.tileLayer(tileUrl, tileOptions).addTo(areaMap);
+
+        areaMap.on('click', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+
+            if (areaMarker) areaMarker.setLatLng(e.latlng);
+            else areaMarker = L.marker(e.latlng).addTo(areaMap);
+
+            // Populate Django's auto-generated name attributes for the Area form
+            const latInput = document.querySelector('input[name="area-center_latitude"]');
+            const lngInput = document.querySelector('input[name="area-center_longitude"]');
+            if (latInput) latInput.value = lat;
+            if (lngInput) lngInput.value = lng;
+        });
+
+        // --- Property Map Initialization ---
+        let propertyMarker = null;
+        const propertyMap = L.map('property-map').setView(defaultLocation, 13);
+        L.tileLayer(tileUrl, tileOptions).addTo(propertyMap);
+
+        propertyMap.on('click', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+
+            if (propertyMarker) propertyMarker.setLatLng(e.latlng);
+            else propertyMarker = L.marker(e.latlng).addTo(propertyMap);
+
+            // Populate Django's auto-generated name attributes for the Property form
+            const latInput = document.querySelector('input[name="property-latitude"]');
+            const lngInput = document.querySelector('input[name="property-longitude"]');
+            if (latInput) latInput.value = lat;
+            if (lngInput) lngInput.value = lng;
+        });
     </script>
 </body>
 </html>
