@@ -4,7 +4,7 @@ from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count
 from .forms import AreaRegistrationForm, PropertyRegistrationForm
-from .models import Area, Incident, Property,SafetyPost
+from .models import Area, Incident, Property, SafetyPost, CommunityPost
 from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
 from django.utils import timezone
 from .models import Area, Incident, Property, SafetyPost, User
@@ -151,4 +151,42 @@ def volunteer_applications(request):
 
     return render(request, 'core/volunteer_applications.html', {
         'pending_applications': pending_applications
+    })
+
+@township_admin_required
+def community_board(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        # 1. Handle Admin creating a new post
+        if action == 'create':
+            title = request.POST.get('title')
+            content = request.POST.get('content')
+            if title and content:
+                CommunityPost.objects.create(
+                    author=request.user,
+                    title=title,
+                    content=content,
+                    is_hidden=False
+                )
+                messages.success(request, 'Your post has been published to the community board.')
+
+        # 2. Handle Admin moderating (hiding/showing) existing posts
+        elif action in ['hide', 'show']:
+            post_id = request.POST.get('post_id')
+            if post_id:
+                post = CommunityPost.objects.get(id=post_id)
+                post.is_hidden = (action == 'hide')
+                post.save(update_fields=['is_hidden'])
+
+                status_msg = "hidden from" if post.is_hidden else "visible to"
+                messages.success(request, f'Post "{post.title}" is now {status_msg} residents.')
+
+        return redirect('community_board')
+
+    # Fetch all posts for the feed
+    posts = CommunityPost.objects.select_related('author').all().order_by('-created_at')
+
+    return render(request, 'core/community_board.html', {
+        'posts': posts
     })

@@ -1,6 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import Area, Device, Property, User, Incident, SafetyPost
+from .models import Area, Device, Property, User, Incident, SafetyPost, CommunityPost
 
 
 class AreaSerializer(serializers.ModelSerializer):
@@ -122,3 +122,17 @@ class SafetyPostSerializer(serializers.ModelSerializer):
             if 'affected_areas' in attrs:
                 raise serializers.ValidationError({'affected_areas': 'Only administrators may target areas.'})
         return attrs
+
+class CommunityPostSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.username', read_only=True)
+    author_area = serializers.CharField(source='author.area.name', read_only=True, default="Unknown Area")
+
+    class Meta:
+        model = CommunityPost
+        fields = ['id', 'author_name', 'author_area', 'title', 'content', 'is_hidden', 'created_at']
+        read_only_fields = ['is_hidden', 'created_at']
+
+    def create(self, validated_data):
+        # Automatically tie the post to the user making the API request
+        validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)

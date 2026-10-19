@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
+from neighbour_shield_backend import settings
+
 
 # =====================================================================
 # AREAS, USERS, DEVICES
@@ -496,3 +498,13 @@ class BroadcastRecipient(models.Model):
 
     def __str__(self):
         return f'{self.post_id} -> {self.user}'
+
+class CommunityPost(models.Model):
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_posts')
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    is_hidden = models.BooleanField(default=False, help_text="Admin can hide inappropriate posts")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
