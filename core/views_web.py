@@ -1,6 +1,6 @@
 import json
 from django.contrib import messages
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count
 from .forms import AreaRegistrationForm, PropertyRegistrationForm
@@ -131,27 +131,51 @@ def _dashboard_context(request):
 @township_admin_required
 def volunteer_applications(request):
     if request.method == 'POST':
-        # Grab the user ID submitted from the HTML form button
         user_id = request.POST.get('user_id')
-        if user_id:
-            user = User.objects.get(id=user_id)
-            user.is_verified_volunteer = True
-            user.volunteer_verified_by = request.user
-            user.volunteer_verified_at = timezone.now()
-            user.save(update_fields=['is_verified_volunteer', 'volunteer_verified_by', 'volunteer_verified_at'])
 
-            messages.success(request, f'Approved {user.username} as a volunteer.')
+        user = get_object_or_404(
+            User,
+            id=user_id,
+            role='resident',
+            is_volunteer_opted_in=True,
+            is_verified_volunteer=False,
+        )
+
+        # Admin verifies the volunteer application.
+        user.role = 'volunteer'
+        user.is_verified_volunteer = True
+        user.volunteer_verified_by = request.user
+        user.volunteer_verified_at = timezone.now()
+
+        user.save(
+            update_fields=[
+                'role',
+                'is_verified_volunteer',
+                'volunteer_verified_by',
+                'volunteer_verified_at',
+            ]
+        )
+
+        messages.success(
+            request,
+            f'Approved {user.username} as a volunteer.'
+        )
+
         return redirect('volunteer_applications')
 
-    # Query only users who opted in but aren't verified yet
     pending_applications = User.objects.filter(
+        role='resident',
         is_volunteer_opted_in=True,
-        is_verified_volunteer=False
+        is_verified_volunteer=False,
     )
 
-    return render(request, 'core/volunteer_applications.html', {
-        'pending_applications': pending_applications
-    })
+    return render(
+        request,
+        'core/volunteer_applications.html',
+        {
+            'pending_applications': pending_applications,
+        },
+    )
 
 @township_admin_required
 def community_board(request):

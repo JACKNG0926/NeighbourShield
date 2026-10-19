@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-6$mc0*04+g1ozbvzc7$&ji-xj$aj7p#ivbmec@iupsvty&rjov
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.0.5',]
+ALLOWED_HOSTS = ['192.168.0.5','127.0.0.1', 'localhost', '*']
 
 
 # Application definition
@@ -90,11 +90,11 @@ WSGI_APPLICATION = 'neighbour_shield_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'sime',
+        'NAME': 'neighbourshield',
         'USER': 'root',
-        'PASSWORD': '12345',
+        'PASSWORD': 'toor',
         'HOST': 'localhost',
-        'PORT': '3306',
+        'PORT': '3307',
     }
 }
 
@@ -158,3 +158,11 @@ AUTHENTICATION_BACKENDS = [
     'core.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+}

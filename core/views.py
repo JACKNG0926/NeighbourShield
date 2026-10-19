@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from math import asin, cos, radians, sin, sqrt
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -7,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS
 from rest_framework.authtoken.models import Token
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Area, Device, Property, User, Incident, SafetyPost
+from .models import Area, Device, Property, User, Incident, SafetyPost, EscalationPolicy
 from .permissions import IsTownshipAdmin
 from .serializers import (AreaSerializer, DeviceSerializer, LocationUpdateSerializer,
                           MobileProfileSerializer, PropertySerializer, RegistrationSerializer,
@@ -112,10 +113,48 @@ class IncidentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'head', 'options']
 
+    @staticmethod
+    def _distance_meters(lat1, lon1, lat2, lon2):
+        """Haversine distance between two coordinates, returned in metres."""
+        earth_radius_m = 6_371_000
+        lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+        return earth_radius_m * 2 * asin(sqrt(min(1.0, a)))
+
     def get_queryset(self):
         user = self.request.user
         if user.is_township_admin or user.role == 'security':
             return Incident.objects.all().order_by('-created_at')
+
+        # Verified volunteers can only see nearby SOS incidents that still
+        # need a response. Never expose the full township incident list to a
+        # volunteer who is not currently eligible or has stale location data.
+        if user.role == 'volunteer':
+            if (not user.is_eligible_volunteer or not user.has_fresh_location()
+                    or user.last_longitude is None):
+                return Incident.objects.none()
+
+            policy = EscalationPolicy.get_solo()
+            candidates = Incident.objects.filter(
+                status__in=Incident.AWAITING_ACK_STATUSES,
+            ).exclude(user=user).only('id', 'latitude', 'longitude').order_by('-created_at')
+
+            nearby_ids = []
+            for incident in candidates:
+                distance = self._distance_meters(
+                    user.last_latitude,
+                    user.last_longitude,
+                    incident.latitude,
+                    incident.longitude,
+                )
+                if distance <= policy.volunteer_radius_m:
+                    nearby_ids.append(incident.pk)
+
+            return Incident.objects.filter(pk__in=nearby_ids).select_related('user').order_by('-created_at')
+
+        # Residents can see only their own incidents.
         return Incident.objects.filter(user=user).order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
@@ -166,13 +205,17 @@ class VolunteerApplicationView(APIView):
         if user.is_verified_volunteer:
             return Response(
                 {"detail": "You are already a verified volunteer."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         user.is_volunteer_opted_in = True
-        user.save(update_fields=['is_volunteer_opted_in'])
+        user.save(update_fields=["is_volunteer_opted_in"])
 
         return Response(
-            {"detail": "Volunteer application submitted successfully."},
-            status=status.HTTP_200_OK
+            {
+                "detail": (
+                    "Volunteer application submitted successfully."
+                )
+            },
+            status=status.HTTP_200_OK,
         )
