@@ -5,111 +5,143 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Township setup | NeighbourShield</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Add Leaflet Map CSS and JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Style Django forms natively */
+        form input, form select { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-top: 0.25rem; font-size: 0.875rem; }
+        form input:focus, form select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 1px #4f46e5; }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+    <!-- SIDEBAR -->
     <div class="fixed left-0 top-0 h-full z-40">
-        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-10 h-14 ml-0 rounded-r-md bg-blue-700 text-white flex items-center justify-center hover:bg-blue-600 focus:outline-none ring-2 ring-white/20 transition-transform duration-200">
-            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-8 h-16 ml-0 rounded-r-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 focus:outline-none shadow-lg transition-transform duration-200 border-y border-r border-indigo-500">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
         </button>
-        <aside id="sidebar" class="fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-100 transform -translate-x-[15rem] transition-transform duration-200 z-40">
-            <div class="border-b border-slate-700 px-5 py-6 text-xl font-bold">NeighbourShield</div>
-            <nav class="space-y-2 p-3">
-                <a href="{% url 'dashboard' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Dashboard</a>
-                <a href="{% url 'township-management' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Township setup</a>
-                <a href="{% url 'volunteer_applications' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Volunteer Apps</a>
-                <a href="{% url 'emergency-broadcast' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Broadcast Alerts</a>
-                <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 transform -translate-x-full transition-transform duration-200 z-40 shadow-2xl">
+            <div class="flex h-16 items-center px-6 bg-slate-950 border-b border-slate-800 text-xl font-bold text-white tracking-tight">
+                NeighbourShield
+            </div>
+            <nav class="p-4 space-y-1">
+                <a href="{% url 'dashboard' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> Dashboard
+                </a>
+                <a href="{% url 'township-management' %}" class="flex items-center rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg> Township setup
+                </a>
+                <a href="{% url 'volunteer_applications' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg> Volunteer Apps
+                </a>
+                <a href="{% url 'emergency-broadcast' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg> Broadcast Alerts
+                </a>
+                <a href="/admin/" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> Django admin
+                </a>
             </nav>
         </aside>
     </div>
 
     <!-- WRAPPER FOR MAIN CONTENT -->
-    <div id="page-content" class="transition-all duration-200 ml-0">
-        <header class="bg-blue-800 p-4 text-white shadow-md">
-            <div class="container mx-auto flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-bold">Township setup</h1>
-                    <p class="text-sm text-blue-100">Click on the maps to auto-fill coordinates, then create your areas and properties.</p>
+    <div id="page-content" class="transition-all duration-200 ml-0 flex flex-col min-h-screen">
+        <header class="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center px-4 lg:px-8">
+            <div class="flex-1 flex justify-between items-center">
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight ml-8 md:ml-0">Township Configuration</h1>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-full py-1.5 px-3 border border-slate-200">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                            {{ request.user.username|make_list|first }}
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 hidden sm:block">{{ request.user.username }}</span>
+                    </div>
                 </div>
-                <a href="{% url 'dashboard' %}" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold hover:bg-blue-600">Back to dashboard</a>
             </div>
         </header>
 
-        <main class="container mx-auto max-w-4xl p-4 lg:p-8">
+        <main class="flex-1 container mx-auto max-w-4xl p-4 lg:p-8">
             {% if messages %}
             <div class="mb-6 space-y-2">
                 {% for message in messages %}
-                <div class="rounded bg-green-100 p-3 text-green-800">{{ message }}</div>
+                <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 shadow-sm flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ message }}
+                </div>
                 {% endfor %}
             </div>
             {% endif %}
 
             <!-- TABS NAVIGATION -->
-            <div class="mb-6 flex border-b border-gray-300">
-                <button id="tab-area" class="px-6 py-3 font-semibold text-blue-700 border-b-2 border-blue-700 focus:outline-none">
+            <div class="mb-6 flex border-b border-slate-200 gap-8">
+                <button id="tab-area" class="pb-3 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 focus:outline-none transition-colors">
                     Add Area
                 </button>
-                <button id="tab-property" class="px-6 py-3 font-semibold text-gray-500 hover:text-blue-700 focus:outline-none">
+                <button id="tab-property" class="pb-3 text-sm font-semibold text-slate-500 hover:text-indigo-600 border-b-2 border-transparent focus:outline-none transition-colors">
                     Add Property
                 </button>
             </div>
 
             <div class="grid grid-cols-1 gap-6">
-
                 <!-- AREA SECTION -->
-                <section id="section-area" class="rounded-lg bg-white p-6 shadow">
-                    <h2 class="text-xl font-semibold text-gray-900">Add area</h2>
-                    <p class="mb-4 mt-1 text-sm text-gray-600">Its centre coordinate and radius are shown as a dotted boundary on the dashboard map.</p>
+                <section id="section-area" class="rounded-xl bg-white p-6 shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-semibold text-slate-900">Define a New Area</h2>
+                    <p class="mb-5 mt-1 text-sm text-slate-500">Click on the map to set the centre coordinate. The radius forms the boundary on the dashboard.</p>
 
-                    <!-- Area Map -->
-                    <div id="area-map" class="h-80 w-full rounded border border-gray-300"></div>
+                    <div id="area-map" class="h-80 w-full rounded-lg border border-slate-200 z-0"></div>
 
-                    <form method="post" class="mt-5 space-y-4">
+                    <form method="post" class="mt-6 space-y-4">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="area">
-                        {% for field in area_form %}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for field in area_form %}
+                            <div class="{% if forloop.first %}md:col-span-2{% endif %}">
+                                <label class="block text-sm font-semibold text-slate-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}<p class="mt-1 text-xs text-red-500">{{ error }}</p>{% endfor %}
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
-                        {% for error in area_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                        <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800">Add area</button>
+                        {% for error in area_form.non_field_errors %}<p class="text-sm text-red-500">{{ error }}</p>{% endfor %}
+                        <div class="pt-2">
+                            <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">Create Area</button>
+                        </div>
                     </form>
                 </section>
 
                 <!-- PROPERTY SECTION -->
-                <section id="section-property" class="rounded-lg bg-white p-6 shadow hidden">
-                    <h2 class="text-xl font-semibold text-gray-900">Add property</h2>
-                    <p class="mb-4 mt-1 text-sm text-gray-600">Choose an area, then enter the coordinate where the blue property pin should appear.</p>
+                <section id="section-property" class="rounded-xl bg-white p-6 shadow-sm border border-slate-200 hidden">
+                    <h2 class="text-lg font-semibold text-slate-900">Register a Property</h2>
+                    <p class="mb-5 mt-1 text-sm text-slate-500">Choose the associated area, then click the map to place the property pin.</p>
 
-                    <!-- Property Map -->
-                    <div id="property-map" class="h-80 w-full rounded border border-gray-300"></div>
+                    <div id="property-map" class="h-80 w-full rounded-lg border border-slate-200 z-0"></div>
 
-                    <form method="post" class="mt-5 space-y-4">
+                    <form method="post" class="mt-6 space-y-4">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="property">
-                        {% for field in property_form %}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}<p class="mt-1 text-sm text-red-600">{{ error }}</p>{% endfor %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for field in property_form %}
+                            <div class="{% if forloop.first %}md:col-span-2{% endif %}">
+                                <label class="block text-sm font-semibold text-slate-700" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}<p class="mt-1 text-xs text-red-500">{{ error }}</p>{% endfor %}
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
-                        {% for error in property_form.non_field_errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
-                        <button type="submit" class="w-full rounded bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800">Add property</button>
+                        {% for error in property_form.non_field_errors %}<p class="text-sm text-red-500">{{ error }}</p>{% endfor %}
+                        <div class="pt-2">
+                            <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">Register Property</button>
+                        </div>
                     </form>
                 </section>
             </div>
         </main>
-    </div> <!-- END WRAPPER -->
+    </div>
 
     <script>
         // Tab Switching Logic
@@ -120,30 +152,20 @@
 
         function switchTab(showArea) {
             if (showArea) {
-                // Show Area, Hide Property
                 sectionArea.classList.remove('hidden');
                 sectionProperty.classList.add('hidden');
-
-                // Style Tabs
-                tabArea.classList.add('text-blue-700', 'border-b-2', 'border-blue-700');
-                tabArea.classList.remove('text-gray-500');
-                tabProperty.classList.add('text-gray-500');
-                tabProperty.classList.remove('text-blue-700', 'border-b-2', 'border-blue-700');
-
-                // Fix map rendering bug when unhiding
+                tabArea.classList.add('text-indigo-600', 'border-indigo-600');
+                tabArea.classList.remove('text-slate-500', 'border-transparent');
+                tabProperty.classList.add('text-slate-500', 'border-transparent');
+                tabProperty.classList.remove('text-indigo-600', 'border-indigo-600');
                 setTimeout(() => { areaMap.invalidateSize(); }, 50);
             } else {
-                // Show Property, Hide Area
                 sectionProperty.classList.remove('hidden');
                 sectionArea.classList.add('hidden');
-
-                // Style Tabs
-                tabProperty.classList.add('text-blue-700', 'border-b-2', 'border-blue-700');
-                tabProperty.classList.remove('text-gray-500');
-                tabArea.classList.add('text-gray-500');
-                tabArea.classList.remove('text-blue-700', 'border-b-2', 'border-blue-700');
-
-                // Fix map rendering bug when unhiding
+                tabProperty.classList.add('text-indigo-600', 'border-indigo-600');
+                tabProperty.classList.remove('text-slate-500', 'border-transparent');
+                tabArea.classList.add('text-slate-500', 'border-transparent');
+                tabArea.classList.remove('text-indigo-600', 'border-indigo-600');
                 setTimeout(() => { propertyMap.invalidateSize(); }, 50);
             }
         }
@@ -162,35 +184,30 @@
             toggle.addEventListener('click', function(e){
                 const isOpen = toggle.getAttribute('aria-expanded') === 'true';
                 if (isOpen) {
-                    sidebar.classList.add('-translate-x-[15rem]');
+                    sidebar.classList.add('-translate-x-full');
                     sidebar.classList.remove('translate-x-0');
-                    toggle.classList.remove('translate-x-[15rem]');
+                    toggle.classList.remove('translate-x-64');
                     icon.classList.remove('rotate-180');
                     toggle.setAttribute('aria-expanded','false');
-                    if(pageContent) pageContent.classList.remove('ml-60');
+                    if(pageContent) pageContent.classList.remove('ml-64');
                 } else {
-                    sidebar.classList.remove('-translate-x-[15rem]');
+                    sidebar.classList.remove('-translate-x-full');
                     sidebar.classList.add('translate-x-0');
-                    toggle.classList.add('translate-x-[15rem]');
+                    toggle.classList.add('translate-x-64');
                     icon.classList.add('rotate-180');
                     toggle.setAttribute('aria-expanded','true');
-                    if(pageContent) pageContent.classList.add('ml-60');
+                    if(pageContent) pageContent.classList.add('ml-64');
                 }
-
-                // Tell both Leaflet maps to redraw after sidebar animates
-                setTimeout(() => {
-                    areaMap.invalidateSize();
-                    propertyMap.invalidateSize();
-                }, 200);
+                setTimeout(() => { areaMap.invalidateSize(); propertyMap.invalidateSize(); }, 200);
             });
         })();
 
         // Shared Map Configuration
-        const defaultLocation = [3.1390, 101.6869]; // Default to KL
+        const defaultLocation = [3.1390, 101.6869];
         const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4n83_1_f56c163dd4fc94a222f8a7e0';
         const tileOptions = { maxZoom: 19, attribution: '© OpenStreetMap contributors, © CARTO' };
 
-        // --- Area Map Initialization ---
+        // Area Map
         let areaMarker = null;
         const areaMap = L.map('area-map').setView(defaultLocation, 13);
         L.tileLayer(tileUrl, tileOptions).addTo(areaMap);
@@ -198,18 +215,15 @@
         areaMap.on('click', function(e) {
             const lat = e.latlng.lat.toFixed(6);
             const lng = e.latlng.lng.toFixed(6);
-
             if (areaMarker) areaMarker.setLatLng(e.latlng);
             else areaMarker = L.marker(e.latlng).addTo(areaMap);
-
-            // Populate Django's auto-generated name attributes for the Area form
             const latInput = document.querySelector('input[name="area-center_latitude"]');
             const lngInput = document.querySelector('input[name="area-center_longitude"]');
             if (latInput) latInput.value = lat;
             if (lngInput) lngInput.value = lng;
         });
 
-        // --- Property Map Initialization ---
+        // Property Map
         let propertyMarker = null;
         const propertyMap = L.map('property-map').setView(defaultLocation, 13);
         L.tileLayer(tileUrl, tileOptions).addTo(propertyMap);
@@ -217,11 +231,8 @@
         propertyMap.on('click', function(e) {
             const lat = e.latlng.lat.toFixed(6);
             const lng = e.latlng.lng.toFixed(6);
-
             if (propertyMarker) propertyMarker.setLatLng(e.latlng);
             else propertyMarker = L.marker(e.latlng).addTo(propertyMap);
-
-            // Populate Django's auto-generated name attributes for the Property form
             const latInput = document.querySelector('input[name="property-latitude"]');
             const lngInput = document.querySelector('input[name="property-longitude"]');
             if (latInput) latInput.value = lat;

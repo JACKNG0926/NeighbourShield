@@ -5,116 +5,158 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emergency Broadcast | NeighbourShield</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Style Django forms natively */
+        form input, form select, form textarea { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-top: 0.25rem; font-size: 0.875rem; }
+        form input:focus, form select:focus, form textarea:focus { outline: none; border-color: #dc2626; box-shadow: 0 0 0 1px #dc2626; }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+    <!-- SIDEBAR -->
     <div class="fixed left-0 top-0 h-full z-40">
-        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-10 h-14 ml-0 rounded-r-md bg-blue-700 text-white flex items-center justify-center hover:bg-blue-600 focus:outline-none ring-2 ring-white/20 transition-transform duration-200">
-            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-8 h-16 ml-0 rounded-r-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 focus:outline-none shadow-lg transition-transform duration-200 border-y border-r border-indigo-500">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
         </button>
-        <aside id="sidebar" class="fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-100 transform -translate-x-[15rem] transition-transform duration-200 z-40">
-            <div class="border-b border-slate-700 px-5 py-6 text-xl font-bold">NeighbourShield</div>
-            <nav class="space-y-2 p-3">
-                <a href="{% url 'dashboard' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Dashboard</a>
-                <a href="{% url 'township-management' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Township setup</a>
-                <a href="{% url 'emergency-broadcast' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Broadcast Alerts</a>
-                <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 transform -translate-x-full transition-transform duration-200 z-40 shadow-2xl">
+            <div class="flex h-16 items-center px-6 bg-slate-950 border-b border-slate-800 text-xl font-bold text-white tracking-tight">
+                NeighbourShield
+            </div>
+            <nav class="p-4 space-y-1">
+                <a href="{% url 'dashboard' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> Dashboard
+                </a>
+                <a href="{% url 'township-management' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg> Township setup
+                </a>
+                <a href="{% url 'volunteer_applications' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg> Volunteer Apps
+                </a>
+                <a href="{% url 'emergency-broadcast' %}" class="flex items-center rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg> Broadcast Alerts
+                </a>
+                <a href="/admin/" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> Django admin
+                </a>
             </nav>
         </aside>
     </div>
 
     <!-- WRAPPER FOR MAIN CONTENT -->
-    <div id="page-content" class="transition-all duration-200 ml-0">
-        <header class="bg-red-800 p-4 text-white shadow-md">
-            <div class="container mx-auto flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-bold">Emergency Broadcast</h1>
-                    <p class="text-sm text-red-100">Send urgent push notifications to residents.</p>
+    <div id="page-content" class="transition-all duration-200 ml-0 flex flex-col min-h-screen">
+        <header class="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center px-4 lg:px-8">
+            <div class="flex-1 flex justify-between items-center">
+                <div class="flex items-center ml-8 md:ml-0">
+                    <svg class="w-6 h-6 text-red-600 mr-2 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                    <h1 class="text-xl font-bold text-slate-800 tracking-tight">Emergency Broadcast</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-full py-1.5 px-3 border border-slate-200">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                            {{ request.user.username|make_list|first }}
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 hidden sm:block">{{ request.user.username }}</span>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <main class="container mx-auto max-w-6xl p-4 lg:p-8">
+        <main class="flex-1 container mx-auto max-w-6xl p-4 lg:p-8">
             {% if messages %}
             <div class="mb-6 space-y-2">
                 {% for message in messages %}
-                <div class="rounded bg-green-100 p-3 text-green-800">{{ message }}</div>
+                <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 shadow-sm flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ message }}
+                </div>
                 {% endfor %}
             </div>
             {% endif %}
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <!-- Send Broadcast Form -->
-                <section class="rounded-lg bg-white p-6 shadow">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Compose Alert</h2>
+                <section class="rounded-xl bg-white p-6 shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-semibold text-slate-900 mb-5">Compose Push Notification</h2>
                     <form method="post" class="space-y-4">
                         {% csrf_token %}
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Category</label>
+                                <label class="block text-sm font-semibold text-slate-700">Category</label>
                                 {{ form.category }}
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Severity</label>
+                                <label class="block text-sm font-semibold text-slate-700">Severity</label>
                                 {{ form.severity }}
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Title</label>
+                            <label class="block text-sm font-semibold text-slate-700">Alert Title</label>
                             {{ form.title }}
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Message Description</label>
+                            <label class="block text-sm font-semibold text-slate-700">Detailed Message</label>
                             {{ form.description }}
                         </div>
 
-                        <div class="p-4 bg-gray-50 border rounded">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Affected Areas (Optional)</label>
-                            <div class="max-h-32 overflow-y-auto space-y-1 text-sm">
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Affected Areas (Optional)</label>
+                            <div class="max-h-32 overflow-y-auto space-y-1 text-sm text-slate-700">
                                 {{ form.affected_areas }}
                             </div>
-                            <p class="text-xs text-gray-500 mt-2">{{ form.affected_areas.help_text }}</p>
+                            <p class="text-xs text-slate-500 mt-2">{{ form.affected_areas.help_text }}</p>
                         </div>
 
-                        <button type="submit" class="w-full rounded bg-red-700 px-4 py-3 font-bold text-white hover:bg-red-800 uppercase tracking-wide">
-                            Send Broadcast
-                        </button>
+                        <div class="pt-2">
+                            <button type="submit" class="w-full inline-flex justify-center items-center rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                Send Broadcast Alert
+                            </button>
+                        </div>
                     </form>
                 </section>
 
                 <!-- History Table -->
-                <section class="rounded-lg bg-white shadow overflow-hidden h-fit">
-                    <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">Recent Broadcasts</h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full bg-white text-sm">
-                            <thead class="bg-gray-800 text-white">
+                <section class="rounded-xl bg-white shadow-sm border border-slate-200 overflow-hidden h-fit flex flex-col max-h-[600px]">
+                    <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h2 class="text-base font-semibold text-slate-800">Recent Broadcasts</h2>
+                    </div>
+                    <div class="overflow-y-auto flex-1">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50 sticky top-0 z-10">
                                 <tr>
-                                    <th class="py-2 px-4 text-left">Title</th>
-                                    <th class="py-2 px-4 text-left">Severity</th>
-                                    <th class="py-2 px-4 text-left">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date Sent</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-gray-700">
+                            <tbody class="bg-white divide-y divide-slate-200 text-sm text-slate-700">
                                 {% for broadcast in recent_broadcasts %}
-                                <tr class="border-b">
-                                    <td class="py-2 px-4 font-medium">{{ broadcast.title }}</td>
-                                    <td class="py-2 px-4">
-                                        <span class="px-2 py-1 rounded text-xs
-                                            {% if broadcast.severity == 'critical' %} bg-red-200 text-red-800
-                                            {% elif broadcast.severity == 'warning' %} bg-yellow-200 text-yellow-800
-                                            {% else %} bg-blue-200 text-blue-800 {% endif %}">
-                                            {{ broadcast.severity|title }}
-                                        </span>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-900">{{ broadcast.title }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% if broadcast.severity == 'critical' %}
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">Critical</span>
+                                        {% elif broadcast.severity == 'warning' %}
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">Warning</span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">Info</span>
+                                        {% endif %}
                                     </td>
-                                    <td class="py-2 px-4">{{ broadcast.created_at|date:"M d, H:i" }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-slate-500">{{ broadcast.created_at|date:"M d, H:i" }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="py-4 text-center text-gray-500">No broadcasts sent yet.</td>
+                                    <td colspan="3" class="px-6 py-8 text-center text-slate-500 bg-slate-50/50">
+                                        No broadcasts sent yet.
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -136,19 +178,19 @@
             toggle.addEventListener('click', function(e){
                 const isOpen = toggle.getAttribute('aria-expanded') === 'true';
                 if (isOpen) {
-                    sidebar.classList.add('-translate-x-[15rem]');
+                    sidebar.classList.add('-translate-x-full');
                     sidebar.classList.remove('translate-x-0');
-                    toggle.classList.remove('translate-x-[15rem]');
+                    toggle.classList.remove('translate-x-64');
                     icon.classList.remove('rotate-180');
                     toggle.setAttribute('aria-expanded','false');
-                    if(pageContent) pageContent.classList.remove('ml-60');
+                    if(pageContent) pageContent.classList.remove('ml-64');
                 } else {
-                    sidebar.classList.remove('-translate-x-[15rem]');
+                    sidebar.classList.remove('-translate-x-full');
                     sidebar.classList.add('translate-x-0');
-                    toggle.classList.add('translate-x-[15rem]');
+                    toggle.classList.add('translate-x-64');
                     icon.classList.add('rotate-180');
                     toggle.setAttribute('aria-expanded','true');
-                    if(pageContent) pageContent.classList.add('ml-60');
+                    if(pageContent) pageContent.classList.add('ml-64');
                 }
             });
         })();

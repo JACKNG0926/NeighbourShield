@@ -10,70 +10,159 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Leaflet Map JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        /* Custom scrollbar for the table */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- SIDEBAR -->
     <div class="fixed left-0 top-0 h-full z-40">
-        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-10 h-14 ml-0 rounded-r-md bg-blue-700 text-white flex items-center justify-center hover:bg-blue-600 focus:outline-none ring-2 ring-white/20 transition-transform duration-200">
-            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-8 h-16 ml-0 rounded-r-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 focus:outline-none shadow-lg transition-transform duration-200 border-y border-r border-indigo-500">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
         </button>
-        <aside id="sidebar" class="fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-100 transform -translate-x-[15rem] transition-transform duration-200 z-40">
-            <div class="border-b border-slate-700 px-5 py-6 text-xl font-bold">NeighbourShield</div>
-            <nav class="p-3 space-y-2">
-                <a href="{% url 'dashboard' %}" class="block rounded bg-blue-700 px-4 py-3 font-semibold text-white">Dashboard</a>
-                <a href="{% url 'township-management' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Township setup</a>
-                <a href="{% url 'volunteer_applications' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Volunteer Apps</a>
-                <a href="{% url 'emergency-broadcast' %}" class="block rounded px-4 py-3 hover:bg-slate-800">Broadcast Alerts</a>
-                <a href="/admin/" class="block rounded px-4 py-3 hover:bg-slate-800">Django admin</a>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 transform -translate-x-full transition-transform duration-200 z-40 shadow-2xl">
+            <div class="flex h-16 items-center px-6 bg-slate-950 border-b border-slate-800 text-xl font-bold text-white tracking-tight">
+                NeighbourShield
+            </div>
+            <nav class="p-4 space-y-1">
+                <a href="{% url 'dashboard' %}" class="flex items-center rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Dashboard
+                </a>
+                <a href="{% url 'township-management' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    Township setup
+                </a>
+                <a href="{% url 'volunteer_applications' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Volunteer Apps
+                </a>
+                <a href="{% url 'emergency-broadcast' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                    Broadcast Alerts
+                </a>
+                <a href="/admin/" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Django admin
+                </a>
             </nav>
         </aside>
     </div>
 
     <!-- WRAPPER FOR MAIN CONTENT -->
-    <div id="page-content" class="transition-all duration-200 ml-0">
-        <nav class="bg-blue-800 p-4 text-white shadow-md">
-            <div class="container mx-auto flex items-center justify-between">
-                <h1 class="text-xl font-bold">NeighbourShield Admin Dashboard</h1>
-                <span>Logged in as: {{ request.user.username }}</span>
+    <div id="page-content" class="transition-all duration-200 ml-0 flex flex-col min-h-screen">
+
+        <!-- HEADER -->
+        <header class="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center px-4 lg:px-8">
+            <div class="flex-1 flex justify-between items-center">
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight ml-8 md:ml-0">Dashboard Overview</h1>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm font-medium text-slate-500 hidden sm:block">Logged in as:</span>
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-full py-1.5 px-3 border border-slate-200">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                            {{ request.user.username|make_list|first }}
+                        </div>
+                        <span class="text-sm font-bold text-slate-700">{{ request.user.username }}</span>
+                    </div>
+                </div>
             </div>
-        </nav>
+        </header>
 
-        <div class="container mx-auto mt-8 grid grid-cols-1 gap-6 p-4">
+        <!-- MAIN LAYOUT -->
+        <main class="flex-1 p-4 lg:p-8">
 
-            <!-- Left Side: The Map -->
-            <div class="bg-white rounded-lg shadow p-4">
-                <h2 class="text-xl font-semibold mb-4">Live Incident Map</h2>
-                <!-- Map Container (must have a defined height) -->
-                <div id="map" class="w-full h-[500px] rounded border"></div>
-            </div>
+            <!-- KPI CARDS ROW -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Active Incidents</p>
+                        <p class="text-2xl font-bold text-slate-900" id="kpi-incidents">0</p>
+                    </div>
+                </div>
 
-            <!-- Right Side: The Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <h2 class="text-xl font-semibold p-4 bg-gray-50 border-b">Active SOS Incidents</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-gray-800 text-white">
-                            <tr>
-                                <th class="py-3 px-4 text-left">Resident</th>
-                                <th class="py-3 px-4 text-left">Status</th>
-                                <th class="py-3 px-4 text-left">Time</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-gray-700">
-                            <!-- This will be populated by JavaScript -->
-                            <tr>
-                                <td colspan="3" class="py-4 text-center text-gray-500">Loading active incidents...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Registered Properties</p>
+                        <p class="text-2xl font-bold text-slate-900" id="kpi-properties">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Township Areas</p>
+                        <p class="text-2xl font-bold text-slate-900" id="kpi-areas">0</p>
+                    </div>
                 </div>
             </div>
 
-        </div>
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+                <!-- MAP COLUMN (Spans 2 columns on wide screens) -->
+                <div class="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h2 class="text-base font-semibold text-slate-800">Live Incident Map</h2>
+                        <span class="flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                    </div>
+                    <div class="p-1 flex-1">
+                        <div id="map" class="w-full h-[500px] rounded-lg z-0"></div>
+                    </div>
+                </div>
+
+                <!-- TABLE COLUMN -->
+                <div class="xl:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[560px]">
+                    <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                        <h2 class="text-base font-semibold text-slate-800">Active SOS Alerts</h2>
+                    </div>
+                    <div class="overflow-y-auto flex-1 p-0">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50 sticky top-0 z-10">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Resident</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-200 text-sm" id="incidents-table-body">
+                                <tr>
+                                    <td colspan="3" class="px-6 py-8 text-center text-slate-500">
+                                        <svg class="animate-spin h-5 w-5 mr-3 inline text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Loading active incidents...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
     </div> <!-- END WRAPPER -->
 
     <script>
+        // SIDEBAR LOGIC
         (function(){
             const toggle = document.getElementById('sidebar-toggle');
             const sidebar = document.getElementById('sidebar');
@@ -84,40 +173,40 @@
             toggle.addEventListener('click', function(e){
                 const isOpen = toggle.getAttribute('aria-expanded') === 'true';
                 if (isOpen) {
-                    sidebar.classList.add('-translate-x-[15rem]');
+                    sidebar.classList.add('-translate-x-full');
                     sidebar.classList.remove('translate-x-0');
-                    toggle.classList.remove('translate-x-[15rem]');
+                    toggle.classList.remove('translate-x-64');
                     icon.classList.remove('rotate-180');
                     toggle.setAttribute('aria-expanded','false');
 
-                    // Remove margin to expand content
-                    if(pageContent) pageContent.classList.remove('ml-60');
+                    if(pageContent) pageContent.classList.remove('ml-64');
                 } else {
-                    sidebar.classList.remove('-translate-x-[15rem]');
+                    sidebar.classList.remove('-translate-x-full');
                     sidebar.classList.add('translate-x-0');
-                    toggle.classList.add('translate-x-[15rem]');
+                    toggle.classList.add('translate-x-64');
                     icon.classList.add('rotate-180');
                     toggle.setAttribute('aria-expanded','true');
 
-                    // Add margin to shrink content and avoid overlap
-                    if(pageContent) pageContent.classList.add('ml-60');
+                    if(pageContent) pageContent.classList.add('ml-64');
                 }
 
                 // Tell Leaflet to resize the map after the transition ends
                 setTimeout(() => {
-                    if (typeof map !== 'undefined') {
-                        map.invalidateSize();
-                    }
+                    if (typeof map !== 'undefined') { map.invalidateSize(); }
                 }, 200);
             });
         })();
     </script>
 
-    <!-- Map Initialization Script with Auto-Refresh -->
+    <!-- MAP & DATA INITIALIZATION -->
     <script>
         // 1. Get the initial static JSON data passed from Django
         const propertyMarkersData = JSON.parse('{{ property_markers_json|escapejs }}');
         const areaBoundariesData = JSON.parse('{{ area_boundaries_json|escapejs }}');
+
+        // Update static KPIs
+        document.getElementById('kpi-properties').innerText = propertyMarkersData.length;
+        document.getElementById('kpi-areas').innerText = areaBoundariesData.length;
 
         // 2. Initialize the map
         let mapCenter = [3.1390, 101.6869];
@@ -130,40 +219,38 @@
             attribution: '© OpenStreetMap contributors, © CARTO'
         }).addTo(map);
 
-        // Create a dedicated layer for incidents so we can clear and redraw them easily
         const incidentLayer = L.layerGroup().addTo(map);
 
         // 3. Draw static elements (Properties and Areas)
         propertyMarkersData.forEach(function(propertyInfo) {
             const propertyIcon = L.divIcon({
                 className: '',
-                html: '<div style="background:#2563eb;color:#fff;border:2px solid #fff;border-radius:50% 50% 50% 0;box-shadow:0 1px 4px #555;transform:rotate(-45deg);width:24px;height:24px;line-height:24px;text-align:center"><span style="display:inline-block;transform:rotate(45deg)">⌂</span></div>',
-                iconSize: [24, 24], iconAnchor: [12, 24], popupAnchor: [0, -24]
+                html: '<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:50% 50% 50% 0;box-shadow:0 1px 4px rgba(0,0,0,0.3);transform:rotate(-45deg);width:22px;height:22px;line-height:20px;text-align:center;font-size:12px;"><span style="display:inline-block;transform:rotate(45deg)">⌂</span></div>',
+                iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -22]
             });
             const marker = L.marker([propertyInfo.lat, propertyInfo.lng], {icon: propertyIcon}).addTo(map);
-            marker.bindPopup(`<strong>Property:</strong> ${propertyInfo.unit_number}<br><strong>Address:</strong> ${propertyInfo.address}<br><strong>Area:</strong> ${propertyInfo.area}<br><strong>Residents:</strong> ${propertyInfo.resident_count}`);
+            marker.bindPopup(`<div class="text-sm"><strong>Property:</strong> ${propertyInfo.unit_number}<br><strong>Address:</strong> ${propertyInfo.address}<br><strong>Area:</strong> ${propertyInfo.area}<br><strong>Residents:</strong> ${propertyInfo.resident_count}</div>`);
             mapBounds.push([propertyInfo.lat, propertyInfo.lng]);
         });
 
         areaBoundariesData.forEach(function(areaInfo) {
             const center = [areaInfo.lat, areaInfo.lng];
             const boundary = L.circle(center, {
-                radius: areaInfo.radius_m, color: '#7c3aed', fillColor: '#a78bfa', fillOpacity: 0.08, weight: 2, dashArray: '6, 8'
+                radius: areaInfo.radius_m, color: '#8b5cf6', fillColor: '#a78bfa', fillOpacity: 0.1, weight: 2, dashArray: '4, 6'
             }).addTo(map);
-            L.circleMarker(center, {color: '#7c3aed', fillColor: '#7c3aed', fillOpacity: 1, radius: 4}).addTo(map)
-                .bindPopup(`<strong>${areaInfo.name}</strong><br>Area centre · ${areaInfo.radius_m} m radius`);
-            boundary.bindTooltip(areaInfo.name, {sticky: true});
+            L.circleMarker(center, {color: '#6d28d9', fillColor: '#6d28d9', fillOpacity: 1, radius: 4}).addTo(map)
+                .bindPopup(`<div class="text-sm"><strong>${areaInfo.name}</strong><br>Area centre · ${areaInfo.radius_m} m radius</div>`);
+            boundary.bindTooltip(areaInfo.name, {sticky: true, className: 'font-semibold text-indigo-900'});
             mapBounds.push(boundary.getBounds());
         });
 
         if (mapBounds.length > 0) {
-            map.fitBounds(mapBounds, {padding: [24, 24], maxZoom: 15});
+            map.fitBounds(mapBounds, {padding: [30, 30], maxZoom: 15});
         }
 
         // 4. Fetch and update active incidents (Polling)
         async function fetchActiveIncidents() {
             try {
-                // Fetch from your DRF API endpoint
                 const response = await fetch('/api/incidents/');
                 if (!response.ok) return;
                 const incidents = await response.json();
@@ -171,44 +258,50 @@
                 // Filter out resolved or cancelled incidents
                 const activeIncidents = incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'cancelled');
 
+                // Update Dynamic KPI
+                document.getElementById('kpi-incidents').innerText = activeIncidents.length;
+
                 // Update Map
                 incidentLayer.clearLayers();
                 activeIncidents.forEach(inc => {
-                    // Check if it's escalated or pending
-                    let circleColor = (inc.status === 'pending' || inc.status === 'escalated') ? 'red' : 'orange';
+                    let circleColor = (inc.status === 'pending' || inc.status === 'escalated') ? '#ef4444' : '#f59e0b';
                     let marker = L.circleMarker([inc.latitude, inc.longitude], {
-                        color: circleColor, fillColor: circleColor, fillOpacity: 0.8, radius: 8
+                        color: circleColor, fillColor: circleColor, fillOpacity: 0.9, radius: 8, weight: 2
                     });
 
-                    let timeStr = new Date(inc.created_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    let timeStr = new Date(inc.created_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-                    marker.bindPopup(`<strong>Resident:</strong> ${inc.user.username}<br><strong>Status:</strong> ${inc.status.toUpperCase()}<br><strong>Time:</strong> ${timeStr}`);
+                    marker.bindPopup(`<div class="text-sm"><strong>Resident:</strong> ${inc.user.username}<br><strong>Status:</strong> ${inc.status.toUpperCase()}<br><strong>Time:</strong> ${timeStr}</div>`);
                     incidentLayer.addLayer(marker);
                 });
 
                 // Update Table
-                const tbody = document.querySelector('table tbody');
+                const tbody = document.getElementById('incidents-table-body');
                 tbody.innerHTML = '';
 
                 if (activeIncidents.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-gray-500">No active incidents.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500 bg-slate-50/50">No active incidents at the moment.</td></tr>`;
                     return;
                 }
 
                 activeIncidents.forEach(inc => {
-                    let statusClass = (inc.status === 'pending' || inc.status === 'escalated') ? 'bg-red-200 text-red-800' :
-                                      inc.status === 'acknowledged' ? 'bg-yellow-200 text-yellow-800' :
-                                      'bg-green-200 text-green-800';
+                    let statusBadge = '';
+                    if (inc.status === 'pending' || inc.status === 'escalated') {
+                        statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                            <span class="w-1.5 h-1.5 mr-1.5 bg-red-500 rounded-full"></span>${inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}</span>`;
+                    } else if (inc.status === 'acknowledged') {
+                        statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                            <span class="w-1.5 h-1.5 mr-1.5 bg-amber-500 rounded-full"></span>${inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}</span>`;
+                    }
 
-                    let timeStr = new Date(inc.created_at).toLocaleString('en-GB', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    let statusFormatted = inc.status.charAt(0).toUpperCase() + inc.status.slice(1);
+                    let timeStr = new Date(inc.created_at).toLocaleString('en-GB', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
                     let tr = document.createElement('tr');
-                    tr.className = 'border-b';
+                    tr.className = 'hover:bg-slate-50 transition-colors';
                     tr.innerHTML = `
-                        <td class="py-3 px-4">${inc.user.username}</td>
-                        <td class="py-3 px-4"><span class="px-2 py-1 rounded text-sm ${statusClass}">${statusFormatted}</span></td>
-                        <td class="py-3 px-4">${timeStr}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-slate-900 font-medium">${inc.user.username}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-slate-500">${timeStr}</td>
                     `;
                     tbody.appendChild(tr);
                 });
