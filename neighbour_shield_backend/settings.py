@@ -25,7 +25,10 @@ SECRET_KEY = 'django-insecure-6$mc0*04+g1ozbvzc7$&ji-xj$aj7p#ivbmec@iupsvty&rjov
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.0.5','127.0.0.1', 'localhost', '*']
+
+
+ALLOWED_HOSTS = ['192.168.0.5', '127.0.0.1', 'localhost', '10.0.2.2']
+
 
 
 # Application definition
@@ -45,6 +48,7 @@ INSTALLED_APPS = [
 
     # Local apps
     'core',
+    'corsheaders',
 ]
 
 # Tell Django to use your custom User model
@@ -55,6 +59,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',   # must be FIRST
+    'django.middleware.security.SecurityMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -63,6 +70,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'neighbour_shield_backend.urls'
 
@@ -92,9 +101,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'neighbourshield',
         'USER': 'root',
-        'PASSWORD': 'toor',
+        'PASSWORD': 'password123',
         'HOST': 'localhost',
-        'PORT': '3307',
+        'PORT': '3306',
     }
 }
 

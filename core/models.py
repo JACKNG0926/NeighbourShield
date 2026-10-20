@@ -6,6 +6,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from neighbour_shield_backend import settings
+from math import asin, cos, radians, sin, sqrt 
 
 
 # =====================================================================
@@ -14,14 +15,59 @@ from neighbour_shield_backend import settings
 class Area(models.Model):
     """A block/zone of the township. Used to target broadcasts and group reports."""
     name = models.CharField(max_length=100, unique=True)
-    # Optional centre + radius so an incident/report's lat/lng can be matched to an area.
     center_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     center_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     radius_m = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.name
+    
+    @property
+    def has_boundary(self):
+        """True only when centre + radius are both configured."""
+        return (self.center_latitude is not None
+                and self.center_longitude is not None
+                and self.radius_m is not None)
 
+
+    # ── ADD FROM HERE ─────────────────────────────────────────────
+    def distance_to(self, latitude, longitude):
+        """Haversine distance from this area's centre, in metres.
+        Returns None if the area has no centre or no point was supplied."""
+        if (self.center_latitude is None or self.center_longitude is None
+                or latitude is None or longitude is None):
+            return None
+        r = 6_371_000
+        lat1, lon1 = radians(float(self.center_latitude)), radians(float(self.center_longitude))
+        lat2, lon2 = radians(float(latitude)), radians(float(longitude))
+        dlat, dlon = lat2 - lat1, lon2 - lon1
+        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+        return r * 2 * asin(sqrt(min(1.0, a)))
+
+    def contains(self, latitude, longitude):
+            """True if the point is inside the area, or if the area has no
+            complete boundary. Caller should check `has_boundary` to know which."""
+            if not self.has_boundary:
+                return True
+            if latitude is None or longitude is None:
+                return True
+            return self.distance_to(latitude, longitude) <= self.radius_m
+    # ── ADD UNTIL HERE ────────────────────────────────────────────
+
+class Street(models.Model):
+    """A named road inside an area. Keeps address/postal data consistent."""
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='streets')
+    name = models.CharField(max_length=150)
+    postal_code = models.CharField(max_length=10, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['area__name', 'name']
+        unique_together = ('area', 'name')
+
+    def __str__(self):
+        return f'{self.name} ({self.area.name})'
 
 class Property(models.Model):
     """A residential unit registered by the township before residents are assigned."""
@@ -29,7 +75,10 @@ class Property(models.Model):
         ('house', 'House'), ('apartment', 'Apartment / condominium'),
         ('townhouse', 'Townhouse'), ('other', 'Other'),
     )
-
+    street = models.ForeignKey(
+        Street, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='properties',
+    )
     area = models.ForeignKey(Area, on_delete=models.PROTECT, related_name='properties')
     unit_number = models.CharField(max_length=100)
     address_line = models.CharField(max_length=255)
@@ -115,6 +164,20 @@ class User(AbstractUser):
         return cls.objects.filter(last_location_at__lt=cutoff).update(
             last_latitude=None, last_longitude=None, last_location_at=None)
 
+    def set_volunteer_verified(self, verified, by_user=None):
+        """Single source of truth for promoting/demoting a volunteer."""
+        self.is_verified_volunteer = verified
+        if verified:
+            self.is_volunteer_opted_in = True
+            if self.role == 'resident':
+                self.role = 'volunteer'  # <--- THIS WAS MISSING
+            self.volunteer_verified_by = by_user
+            self.volunteer_verified_at = timezone.now()
+        else:
+            self.volunteer_verified_by = None
+            self.volunteer_verified_at = None
+            if self.role == 'volunteer':
+                self.role = 'resident'
 
 class Device(models.Model):
     """One row per phone/install, so users with several devices all get pushes."""
