@@ -3,3 +3,21 @@ __pycache__/
 *.py[cod]
 .env
 media/
+
+# IDE / Editor
+.idea/
+
+# Django settings
+settings.py
+setting.py
+
+# Agents & AI configuration
+.agents/
+GEMINI.md
+AGENTS.md
+openapi.yaml
+
+# Markdown files (ignore all except README)
+*.md
+!README.md
+!readme.md

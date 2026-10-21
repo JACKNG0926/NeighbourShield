@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (AreaViewSet, DeviceViewSet, MyLocationView, MyProfileView, PropertyViewSet,
                     RegistrationView, TokenLoginView, UserViewSet, IncidentViewSet, SafetyPostViewSet,
-                    VolunteerApplicationView) # 1. Import the new view
+                    VolunteerApplicationView, CommunityPostViewSet) # 1. Import the new view
 
 # The router automatically generates standard REST URLs for our ViewSets
 router = DefaultRouter()
@@ -13,6 +13,7 @@ router.register(r'properties', PropertyViewSet, basename='property')
 router.register(r'devices', DeviceViewSet, basename='device')
 router.register(r'incidents', IncidentViewSet)
 router.register(r'posts', SafetyPostViewSet)
+router.register(r'community-posts', CommunityPostViewSet, basename='community-post')
 
 urlpatterns = [
     # API Endpoints

@@ -1,18 +1,20 @@
+from django.db import models
 from django.contrib.auth import authenticate
 from math import asin, cos, radians, sin, sqrt
 from django.utils import timezone
 from rest_framework import viewsets, status
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS
 from rest_framework.authtoken.models import Token
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Area, Device, Property, User, Incident, SafetyPost, EscalationPolicy
+from .models import Area, Device, Property, User, Incident, SafetyPost, EscalationPolicy, CommunityPost
 from .permissions import IsTownshipAdmin
 from .serializers import (AreaSerializer, DeviceSerializer, LocationUpdateSerializer,
                           MobileProfileSerializer, PropertySerializer, RegistrationSerializer,
-                          UserSerializer, IncidentSerializer, SafetyPostSerializer)
+                          UserSerializer, IncidentSerializer, SafetyPostSerializer, CommunityPostSerializer)
 
 
 class TokenLoginView(APIView):
@@ -103,8 +105,25 @@ class DeviceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Device.objects.filter(user=self.request.user).order_by('-last_seen')
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        fcm_token = serializer.validated_data['fcm_token']
+        platform = serializer.validated_data.get('platform', 'android')
+        is_active = serializer.validated_data.get('is_active', True)
+
+        device, created = Device.objects.update_or_create(
+            fcm_token=fcm_token,
+            defaults={
+                'user': request.user,
+                'platform': platform,
+                'is_active': is_active,
+                'last_seen': timezone.now(),
+            }
+        )
+        output_serializer = self.get_serializer(device)
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(output_serializer.data, status=status_code)
 
 
 class IncidentViewSet(viewsets.ModelViewSet):
@@ -186,6 +205,7 @@ class SafetyPostViewSet(viewsets.ModelViewSet):
     queryset = SafetyPost.objects.all().order_by('-created_at')
     serializer_class = SafetyPostSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         if self.action in ('list', 'retrieve') or self.request.user.is_township_admin:
@@ -194,6 +214,37 @@ class SafetyPostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='latest_broadcast')
+    def latest_broadcast(self, request):
+        """
+        Returns the latest open emergency broadcast for local development real-time synchronization.
+        Resolves audience based on user area or township-wide broadcasts.
+        """
+        user = request.user
+        broadcasts = SafetyPost.objects.filter(post_type='broadcast', status='open')
+        user_area = getattr(user, 'area', None) or getattr(getattr(user, 'residence', None), 'area', None)
+        if user_area:
+            broadcasts = broadcasts.filter(
+                models.Q(affected_areas=user_area) | models.Q(affected_areas__isnull=True)
+            ).distinct()
+
+        latest = broadcasts.order_by('-created_at').first()
+        if not latest:
+            return Response({'broadcast': None})
+
+        return Response({
+            'broadcast': {
+                'id': latest.id,
+                'broadcast_id': str(latest.id),
+                'title': latest.title,
+                'description': latest.description,
+                'severity': (latest.severity or 'info').lower(),
+                'category': latest.category or 'other',
+                'status': latest.status,
+                'created_at': latest.created_at.isoformat() if latest.created_at else None,
+            }
+        })
 
 
 class VolunteerApplicationView(APIView):
@@ -219,3 +270,18 @@ class VolunteerApplicationView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+class CommunityPostViewSet(viewsets.ModelViewSet):
+    queryset = CommunityPost.objects.all().order_by('-created_at')
+    serializer_class = CommunityPostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if getattr(user, 'is_township_admin', False) or user.is_staff or user.is_superuser:
+            return CommunityPost.objects.all().order_by('-created_at')
+        return CommunityPost.objects.filter(is_hidden=False).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+

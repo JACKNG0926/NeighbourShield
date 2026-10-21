@@ -48,6 +48,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
     residence = serializers.PrimaryKeyRelatedField(
         queryset=Property.objects.filter(is_active=True), required=False, allow_null=True
     )
+    unit_address = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
 
     class Meta:
         model = User
@@ -94,6 +95,18 @@ class IncidentSerializer(serializers.ModelSerializer):
                   'acknowledged_at', 'resolved_at', 'resolution_note')
         read_only_fields = ('user', 'status', 'escalation_level', 'next_escalation_at',
                             'acknowledged_by', 'acknowledged_at', 'resolved_at', 'resolution_note')
+        extra_kwargs = {
+            'message': {'required': False, 'allow_blank': True, 'default': ''},
+            'incident_type': {'required': False, 'default': 'other'},
+        }
+
+    def validate_incident_type(self, value):
+        valid_choices = [c[0] for c in Incident.TYPE_CHOICES]
+        if value in valid_choices:
+            return value
+        if value and value.lower() == 'sos':
+            return 'other'
+        return 'other'
 
 class SafetyPostSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)

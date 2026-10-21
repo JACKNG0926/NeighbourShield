@@ -59,9 +59,13 @@ def emergency_broadcast(request):
             broadcast.save()
             form.save_m2m()  # Required to save the ManyToMany affected_areas field
 
-            # TODO: Call FCM push notification service here to notify users in affected_areas
+            from .services import dispatch_emergency_broadcast
+            dispatch_stats = dispatch_emergency_broadcast(broadcast)
 
-            messages.success(request, f'Emergency broadcast "{broadcast.title}" was sent successfully.')
+            messages.success(
+                request,
+                f'Emergency broadcast "{broadcast.title}" was dispatched to {dispatch_stats["total_users"]} resident(s) ({broadcast.severity.upper()}).'
+            )
             return redirect('emergency-broadcast')
     else:
         form = BroadcastForm()
