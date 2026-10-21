@@ -3,3 +3,26 @@ __pycache__/
 *.py[cod]
 .env
 media/
+
+# IDE / Editor
+.idea/
+
+# Database
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+
+# Developer local overrides
+local_settings.py
+
+
+# Agents & AI configuration
+.agents/
+GEMINI.md
+AGENTS.md
+openapi.yaml
+
+# Markdown files (ignore all except README)
+*.md
+!README.md
+!readme.md
