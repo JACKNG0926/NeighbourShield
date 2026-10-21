@@ -69,8 +69,10 @@
             {% if messages %}
             <div class="mb-6 space-y-2">
                 {% for message in messages %}
-                <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 shadow-sm flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div class="rounded-lg p-4 text-sm shadow-sm flex items-center
+                    {% if 'error' in message.tags %}bg-red-50 border border-red-200 text-red-800
+                    {% elif 'warning' in message.tags %}bg-amber-50 border border-amber-200 text-amber-800
+                    {% else %}bg-emerald-50 border border-emerald-200 text-emerald-800{% endif %}">
                     {{ message }}
                 </div>
                 {% endfor %}
@@ -143,7 +145,15 @@
         </main>
     </div>
 
+    <!-- Pass Data to JavaScript -->
+    {{ property_markers_json|json_script:"props-data" }}
+    {{ area_boundaries_json|json_script:"areas-data" }}
+
     <script>
+        // 1. Parse injected JSON data
+        const existingProps = JSON.parse(document.getElementById('props-data').textContent);
+        const existingAreas = JSON.parse(document.getElementById('areas-data').textContent);
+
         // Tab Switching Logic
         const tabArea = document.getElementById('tab-area');
         const tabProperty = document.getElementById('tab-property');
@@ -207,37 +217,148 @@
         const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4n83_1_f56c163dd4fc94a222f8a7e0';
         const tileOptions = { maxZoom: 19, attribution: '© OpenStreetMap contributors, © CARTO' };
 
-        // Area Map
+        // Form Inputs
+        const areaInputLat = document.querySelector('input[name="area-center_latitude"]');
+        const areaInputLng = document.querySelector('input[name="area-center_longitude"]');
+        const areaInputRad = document.querySelector('input[name="area-radius_m"]');
+        const propInputLat = document.querySelector('input[name="property-latitude"]');
+        const propInputLng = document.querySelector('input[name="property-longitude"]');
+
+        // ==========================================
+        // AREA MAP
+        // ==========================================
         let areaMarker = null;
+        let areaPreviewCircle = null; // For the radius
         const areaMap = L.map('area-map').setView(defaultLocation, 13);
         L.tileLayer(tileUrl, tileOptions).addTo(areaMap);
 
+        // Draw existing areas lightly
+        existingAreas.forEach(function (a) {
+            L.circle([a.lat, a.lng], {
+                radius: a.radius_m, color: '#94a3b8', weight: 1.5,
+                fillColor: '#94a3b8', fillOpacity: 0.06, interactive: false,
+            }).addTo(areaMap);
+        });
+
+        // Function to draw/update the radius circle preview
+        function updateAreaPreview() {
+            if (!areaInputLat || !areaInputLng || !areaInputRad) return;
+            const lat = parseFloat(areaInputLat.value);
+            const lng = parseFloat(areaInputLng.value);
+            const rad = parseFloat(areaInputRad.value);
+            
+            // If missing data, clear the circle
+            if (isNaN(lat) || isNaN(lng) || isNaN(rad) || rad <= 0) {
+                if (areaPreviewCircle) { areaMap.removeLayer(areaPreviewCircle); areaPreviewCircle = null; }
+                return;
+            }
+
+            // Draw or update the circle
+            if (areaPreviewCircle) {
+                areaPreviewCircle.setLatLng([lat, lng]);
+                areaPreviewCircle.setRadius(rad);
+            } else {
+                areaPreviewCircle = L.circle([lat, lng], {
+                    radius: rad, color: '#4f46e5', weight: 2,
+                    fillColor: '#4f46e5', fillOpacity: 0.12,
+                }).addTo(areaMap);
+            }
+        }
+
+        // Click on map
         areaMap.on('click', function(e) {
             const lat = e.latlng.lat.toFixed(6);
             const lng = e.latlng.lng.toFixed(6);
             if (areaMarker) areaMarker.setLatLng(e.latlng);
             else areaMarker = L.marker(e.latlng).addTo(areaMap);
-            const latInput = document.querySelector('input[name="area-center_latitude"]');
-            const lngInput = document.querySelector('input[name="area-center_longitude"]');
-            if (latInput) latInput.value = lat;
-            if (lngInput) lngInput.value = lng;
+            
+            if (areaInputLat) areaInputLat.value = lat;
+            if (areaInputLng) areaInputLng.value = lng;
+            
+            updateAreaPreview(); // Update the radius circle
         });
 
-        // Property Map
+        // Listen for typing in the radius field
+        if (areaInputRad) areaInputRad.addEventListener('input', updateAreaPreview);
+        if (areaInputLat) areaInputLat.addEventListener('input', updateAreaPreview);
+        if (areaInputLng) areaInputLng.addEventListener('input', updateAreaPreview);
+
+        // Restore map state if form was submitted with errors
+        if (areaInputLat && areaInputLat.value && areaInputLng && areaInputLng.value) {
+            const lat = parseFloat(areaInputLat.value);
+            const lng = parseFloat(areaInputLng.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                areaMarker = L.marker([lat, lng]).addTo(areaMap);
+                areaMap.setView([lat, lng], 15);
+                updateAreaPreview();
+            }
+        }
+
+        // ==========================================
+        // PROPERTY MAP
+        // ==========================================
         let propertyMarker = null;
         const propertyMap = L.map('property-map').setView(defaultLocation, 13);
         L.tileLayer(tileUrl, tileOptions).addTo(propertyMap);
 
+        // Draw existing areas
+        existingAreas.forEach(function (a) {
+            L.circle([a.lat, a.lng], {
+                radius: a.radius_m, color: '#4f46e5', weight: 1.5,
+                fillColor: '#4f46e5', fillOpacity: 0.06, interactive: false,
+            }).addTo(propertyMap);
+            // Area name label
+            L.marker([a.lat, a.lng], {
+                interactive: false,
+                icon: L.divIcon({
+                    className: 'bg-transparent border-0',
+                    html: '<div style="font-size:11px;font-weight:700;color:#4f46e5;transform:translateX(-50%);">' + a.name + '</div>',
+                }),
+            }).addTo(propertyMap);
+        });
+
+        // Draw existing properties
+        existingProps.forEach(function (p) {
+            L.circleMarker([p.lat, p.lng], {
+                radius: 5, color: '#059669', weight: 2,
+                fillColor: '#10b981', fillOpacity: 1,
+            })
+            .bindTooltip('<b>' + p.unit + '</b><br>' + p.address + '<br>' + p.area + '<br>Residents: ' + p.resident_count, { direction: 'top' })
+            .addTo(propertyMap);
+        });
+
+        // Click on map to drop new property pin
         propertyMap.on('click', function(e) {
             const lat = e.latlng.lat.toFixed(6);
             const lng = e.latlng.lng.toFixed(6);
             if (propertyMarker) propertyMarker.setLatLng(e.latlng);
-            else propertyMarker = L.marker(e.latlng).addTo(propertyMap);
-            const latInput = document.querySelector('input[name="property-latitude"]');
-            const lngInput = document.querySelector('input[name="property-longitude"]');
-            if (latInput) latInput.value = lat;
-            if (lngInput) lngInput.value = lng;
+            else propertyMarker = L.marker(e.latlng, { draggable: true }).addTo(propertyMap);
+            
+            if (propInputLat) propInputLat.value = lat;
+            if (propInputLng) propInputLng.value = lng;
+
+            // Allow dragging
+            propertyMarker.on('dragend', function (ev) {
+                const p = ev.target.getLatLng();
+                if (propInputLat) propInputLat.value = p.lat.toFixed(6);
+                if (propInputLng) propInputLng.value = p.lng.toFixed(6);
+            });
         });
+
+        // Restore map state if form was submitted with errors
+        if (propInputLat && propInputLat.value && propInputLng && propInputLng.value) {
+            const lat = parseFloat(propInputLat.value);
+            const lng = parseFloat(propInputLng.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                propertyMarker = L.marker([lat, lng], { draggable: true }).addTo(propertyMap);
+                propertyMarker.on('dragend', function (ev) {
+                    const p = ev.target.getLatLng();
+                    if (propInputLat) propInputLat.value = p.lat.toFixed(6);
+                    if (propInputLng) propInputLng.value = p.lng.toFixed(6);
+                });
+                propertyMap.setView([lat, lng], 16);
+            }
+        }
     </script>
 </body>
 </html>

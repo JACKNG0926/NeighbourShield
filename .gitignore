@@ -7,9 +7,14 @@ media/
 # IDE / Editor
 .idea/
 
-# Django settings
-settings.py
-setting.py
+# Database
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+
+# Developer local overrides
+local_settings.py
+
 
 # Agents & AI configuration
 .agents/

@@ -8,7 +8,8 @@ from .models import Area, Incident, Property, SafetyPost, CommunityPost
 from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
 from django.utils import timezone
 from .models import Area, Incident, Property, SafetyPost, User
-
+from django.db.models import Prefetch
+from .models import Street
 
 township_admin_required = user_passes_test(
     lambda user: user.is_authenticated and user.is_township_admin,
@@ -24,29 +25,64 @@ def admin_dashboard(request):
 
 @township_admin_required
 def township_management(request):
+    tab = request.GET.get('tab', 'area')
     area_form = AreaRegistrationForm(prefix='area')
     property_form = PropertyRegistrationForm(prefix='property')
 
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
         if form_type == 'area':
+            tab = 'area'
             area_form = AreaRegistrationForm(request.POST, prefix='area')
             if area_form.is_valid():
                 area = area_form.save()
                 messages.success(request, f'Area "{area.name}" was added.')
-                return redirect('township-management')
+                return redirect(f'{request.path}?tab=area')
+            messages.error(request, 'Area was NOT added. See the errors below.')
         elif form_type == 'property':
+            tab = 'property'
             property_form = PropertyRegistrationForm(request.POST, prefix='property')
             if property_form.is_valid():
-                registered_property = property_form.save()
-                messages.success(request, f'Property "{registered_property}" was added.')
-                return redirect('township-management')
+                prop = property_form.save()
+                warning = getattr(property_form, '_boundary_warning', None)
+                if warning:
+                    messages.warning(request, f'Property "{prop}" was added. {warning}')
+                else:
+                    messages.success(request, f'Property "{prop}" was added inside "{prop.area.name}".')
+                return redirect(f'{request.path}?tab=property')
+            messages.error(request, 'Property was NOT added. See the errors below.')
+
+    streets_data = list(
+        Street.objects.filter(is_active=True)
+        .values('id', 'name', 'postal_code', 'area_id')
+    )
+    # Map markers for the Leaflet preview
+    property_markers = [
+        {'unit': p.unit_number, 'address': p.address_line, 'area': p.area.name,
+         'lat': float(p.latitude), 'lng': float(p.longitude),
+         'resident_count': p.resident_count}
+        for p in Property.objects.select_related('area')
+            .annotate(resident_count=Count('residents'))
+            .filter(is_active=True, latitude__isnull=False, longitude__isnull=False)
+    ]
+    area_boundaries = [
+        {'name': a.name, 'lat': float(a.center_latitude),
+         'lng': float(a.center_longitude), 'radius_m': a.radius_m}
+        for a in Area.objects.filter(
+            center_latitude__isnull=False,
+            center_longitude__isnull=False,
+            radius_m__isnull=False,
+        )
+    ]
 
     return render(request, 'core/township_management.html', {
         'area_form': area_form,
         'property_form': property_form,
+        'active_tab': tab,
+        'streets_json': streets_data,
+        'property_markers_json': property_markers,
+        'area_boundaries_json': area_boundaries,
     })
-
 @township_admin_required
 def emergency_broadcast(request):
     if request.method == 'POST':
@@ -144,6 +180,11 @@ def volunteer_applications(request):
             is_volunteer_opted_in=True,
             is_verified_volunteer=False,
         )
+        user.set_volunteer_verified(True, request.user)
+        user.save(update_fields=['role', 'is_verified_volunteer', 'is_volunteer_opted_in', 'volunteer_verified_by', 'volunteer_verified_at'])
+        
+        messages.success(request, f'Approved {user.username} as a volunteer.')
+        return redirect('volunteer_applications')
 
         # Admin verifies the volunteer application.
         user.role = 'volunteer'

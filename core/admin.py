@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 
+# Removed 'Street' from the imports
 from .models import (User, Area, Property, Device, EscalationPolicy, Incident, Notification,
                      Acknowledgement, IncidentLog, SafetyPost, BroadcastRecipient)
 
@@ -36,12 +37,12 @@ class ReadOnlyInline(admin.TabularInline):
 
 @admin.action(description='Approve selected users as volunteers')
 def approve_volunteers(modeladmin, request, queryset):
-    queryset.update(
-        is_volunteer_opted_in=True,
-        is_verified_volunteer=True,
-        volunteer_verified_by=request.user,
-        volunteer_verified_at=timezone.now()
-    )
+    for user in queryset:
+        user.set_volunteer_verified(True, request.user)
+        user.save(update_fields=[
+            'role', 'is_volunteer_opted_in', 'is_verified_volunteer',
+            'volunteer_verified_by', 'volunteer_verified_at',
+        ])
 
 def _is_township_admin(user):
     return user.is_superuser or getattr(user, 'role', '') == 'admin'
@@ -84,13 +85,11 @@ class CustomUserAdmin(UserAdmin):
         if obj.residence_id:
             # A resident's area always follows their registered property.
             obj.area = obj.residence.area
+            
         if 'is_verified_volunteer' in form.changed_data:
-            if obj.is_verified_volunteer:
-                obj.volunteer_verified_by = request.user
-                obj.volunteer_verified_at = timezone.now()
-            else:
-                obj.volunteer_verified_by = None
-                obj.volunteer_verified_at = None
+            # Use the new single source of truth method
+            obj.set_volunteer_verified(obj.is_verified_volunteer, request.user)
+            
         super().save_model(request, obj, form, change)
 
 
