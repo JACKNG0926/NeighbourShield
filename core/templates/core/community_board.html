@@ -36,6 +36,9 @@
                 <a href="{% url 'community_board' %}" class="flex items-center rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg> Community Board
                 </a>
+                <a href="{% url 'safety-reports' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> Safety Reports
+                </a>
                 <a href="/admin/" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> Django admin
                 </a>
@@ -70,6 +73,18 @@
                 {% endfor %}
             </div>
             {% endif %}
+
+            <!-- SECTION TABS (Discussion Board vs Safety Reports) -->
+            <div class="flex items-center space-x-2 border-b border-slate-200 pb-3 mb-6">
+                <a href="{% url 'community_board' %}" class="flex items-center space-x-2 px-4 py-2 text-sm font-bold rounded-lg bg-indigo-600 text-white shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
+                    <span>Discussion Board</span>
+                </a>
+                <a href="{% url 'safety-reports' %}" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    <span>Safety & Hazard Reports</span>
+                </a>
+            </div>
 
             <div class="space-y-6">
 
@@ -106,45 +121,217 @@
 
                 <!-- EXISTING POSTS LOOP -->
                 {% for post in posts %}
-                <div class="bg-white rounded-xl shadow-sm border {% if post.is_hidden %}border-red-200 bg-red-50/30{% else %}border-slate-200{% endif %} p-6">
-                    <div class="flex justify-between items-start mb-4">
+                <div id="post-{{ post.id }}" class="bg-white rounded-xl shadow-sm border {% if post.is_hidden %}border-red-200 bg-red-50/30{% else %}border-slate-200{% endif %} p-6 transition-all">
+                    <!-- Post Header -->
+                    <div class="flex justify-between items-start mb-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold uppercase">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm uppercase flex-shrink-0">
                                 {{ post.author.username|make_list|first }}
                             </div>
                             <div>
-                                <h3 class="text-sm font-bold text-slate-900">{{ post.author.username }}</h3>
-                                <p class="text-xs text-slate-500">{{ post.created_at|date:"M d, Y h:i A" }}</p>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-slate-900">{{ post.author.username }}</h3>
+                                    {% if post.author.role == 'volunteer' or post.author.is_verified_volunteer %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        ★ Volunteer
+                                    </span>
+                                    {% elif post.author.is_township_admin or post.author.role == 'admin' %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                        Admin
+                                    </span>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                        Resident
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                                    <span>{{ post.created_at|date:"M d, Y h:i A" }}</span>
+                                    {% if post.author.area %}
+                                    <span>• {{ post.author.area.name }}</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
 
+                        <!-- Moderation: Hide/Unhide Post -->
                         <form method="post" action="{% url 'community_board' %}">
                             {% csrf_token %}
                             <input type="hidden" name="post_id" value="{{ post.id }}">
                             {% if post.is_hidden %}
                                 <input type="hidden" name="action" value="show">
-                                <button type="submit" class="inline-flex items-center rounded-lg bg-white border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                                <button type="submit" class="inline-flex items-center rounded-lg bg-white border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">
                                     <svg class="w-4 h-4 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> Unhide Post
                                 </button>
                             {% else %}
                                 <input type="hidden" name="action" value="hide">
-                                <button type="submit" class="inline-flex items-center rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-100">
+                                <button type="submit" class="inline-flex items-center rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-100 transition-colors">
                                     <svg class="w-4 h-4 mr-1.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> Hide Post
                                 </button>
                             {% endif %}
                         </form>
                     </div>
 
-                    <h4 class="text-base font-bold text-slate-800 mb-2">{{ post.title }}</h4>
-                    <p class="text-sm text-slate-600 whitespace-pre-wrap">{{ post.content }}</p>
+                    <!-- Post Body -->
+                    <h4 class="text-base font-bold text-slate-900 mb-1.5">{{ post.title }}</h4>
+                    <p class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{{ post.content }}</p>
 
                     {% if post.is_hidden %}
-                    <div class="mt-4 pt-3 border-t border-red-100">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                            Hidden from residents
+                    <div class="mt-3 pt-2 border-t border-red-100">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                            Hidden from residents (Moderated by Admin)
                         </span>
                     </div>
                     {% endif %}
+
+                    <!-- ENGAGEMENT STATS BAR -->
+                    <div class="flex items-center justify-between text-xs text-slate-500 pt-4 mt-3 border-t border-slate-100">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-[10px]">❤️</span>
+                            <span id="likes-stat-{{ post.id }}" class="font-medium">
+                                {{ post.likes.count }} {% if post.likes.count == 1 %}like{% else %}likes{% endif %}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span id="comments-stat-{{ post.id }}" class="font-medium">
+                                {{ post.active_comments|length }} {% if post.active_comments|length == 1 %}comment{% else %}comments{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- INTERACTIVE ACTIONS ROW (LIKE & COMMENT) -->
+                    <div class="flex items-center gap-2 pt-2.5 mt-2 border-t border-slate-100">
+                        <!-- Like Form & Button -->
+                        <form method="post" action="{% url 'community_board' %}" class="like-form" data-post-id="{{ post.id }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="like">
+                            <input type="hidden" name="post_id" value="{{ post.id }}">
+                            <button type="submit" id="like-btn-{{ post.id }}"
+                                    class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs {% if post.user_has_liked %}bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100{% else %}bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-rose-600{% endif %}">
+                                <svg class="w-4 h-4 mr-1.5 transition-transform duration-150 active:scale-125 {% if post.user_has_liked %}fill-current text-rose-500{% else %}text-slate-500 fill-none{% endif %}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                                <span class="like-label">{% if post.user_has_liked %}Liked{% else %}Like{% endif %}</span>
+                                <span class="ml-1 font-bold like-count">({{ post.likes.count }})</span>
+                            </button>
+                        </form>
+
+                        <!-- Toggle / Focus Comments Button -->
+                        <button type="button" onclick="focusCommentInput({{ post.id }})"
+                                class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-indigo-600 transition-all shadow-xs">
+                            <svg class="w-4 h-4 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            <span>Comment</span>
+                            <span class="ml-1 font-bold">({{ post.active_comments|length }})</span>
+                        </button>
+                    </div>
+
+                    <!-- COMMENTS SECTION -->
+                    <div id="comments-section-{{ post.id }}" class="mt-4 bg-slate-50/80 rounded-xl p-4 border border-slate-200/80 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                            <h5 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center">
+                                <svg class="w-3.5 h-3.5 mr-1.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
+                                Comments (<span class="comments-count-badge-{{ post.id }}">{{ post.active_comments|length }}</span>)
+                            </h5>
+                        </div>
+
+                        <!-- Existing Comments List -->
+                        <div id="comments-list-{{ post.id }}" class="space-y-2.5">
+                            {% for comment in post.active_comments %}
+                            <div id="comment-{{ comment.id }}" class="bg-white rounded-lg p-3 border {% if comment.is_hidden %}border-amber-200 bg-amber-50/40{% else %}border-slate-200/80{% endif %} shadow-xs space-y-1 transition-all">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0">
+                                            {{ comment.author.username|make_list|first }}
+                                        </div>
+                                        <span class="text-xs font-bold text-slate-900">{{ comment.author.username }}</span>
+                                        {% if comment.author.role == 'volunteer' or comment.author.is_verified_volunteer %}
+                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            ★ Volunteer
+                                        </span>
+                                        {% elif comment.author.is_township_admin or comment.author.role == 'admin' %}
+                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                            Admin
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                            Resident
+                                        </span>
+                                        {% endif %}
+                                        <span class="text-[10px] text-slate-400">• {{ comment.created_at|date:"M d, h:i A" }}</span>
+                                    </div>
+
+                                    <!-- Comment Moderation / Delete Actions -->
+                                    <div class="flex items-center gap-1">
+                                        {% if request.user.is_township_admin %}
+                                        <form method="post" action="{% url 'community_board' %}" class="inline-block comment-mod-form" data-comment-id="{{ comment.id }}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                            {% if comment.is_hidden %}
+                                            <input type="hidden" name="action" value="show_comment">
+                                            <button type="submit" title="Unhide comment" class="text-slate-400 hover:text-emerald-600 p-1 rounded transition-colors text-[11px] font-medium">
+                                                Unhide
+                                            </button>
+                                            {% else %}
+                                            <input type="hidden" name="action" value="hide_comment">
+                                            <button type="submit" title="Hide inappropriate comment" class="text-slate-400 hover:text-amber-600 p-1 rounded transition-colors text-[11px] font-medium">
+                                                Hide
+                                            </button>
+                                            {% endif %}
+                                        </form>
+                                        {% endif %}
+
+                                        {% if request.user.is_township_admin or comment.author_id == request.user.id %}
+                                        <form method="post" action="{% url 'community_board' %}" class="inline-block delete-comment-form" data-comment-id="{{ comment.id }}" data-post-id="{{ post.id }}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_comment">
+                                            <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                            <button type="submit" title="Delete comment" onclick="return confirm('Delete this comment?');" class="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap pl-8">{{ comment.content }}</p>
+
+                                {% if comment.is_hidden %}
+                                <div class="pl-8 pt-1">
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                                        Hidden from residents (Admin view only)
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <p id="no-comments-{{ post.id }}" class="text-xs text-slate-400 italic text-center py-2.5">
+                                No comments yet. Be the first to share your thoughts!
+                            </p>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Add Comment Input Box -->
+                        <form method="post" action="{% url 'community_board' %}" class="comment-form pt-2 flex items-start gap-2 border-t border-slate-200/60" data-post-id="{{ post.id }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="comment">
+                            <input type="hidden" name="post_id" value="{{ post.id }}">
+                            <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase flex-shrink-0 mt-0.5">
+                                {{ request.user.username|make_list|first }}
+                            </div>
+                            <div class="flex-1 flex gap-2">
+                                <textarea name="content" id="comment-input-{{ post.id }}" required rows="1"
+                                          placeholder="Write a constructive comment..."
+                                          class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none leading-snug"
+                                          oninput="autoResizeTextarea(this)"></textarea>
+                                <button type="submit" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center flex-shrink-0">
+                                    <span>Post</span>
+                                    <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
                 {% empty %}
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
@@ -157,33 +344,227 @@
         </main>
     </div>
 
+    <!-- SCRIPT FOR SIDEBAR, LIKE & COMMENT INTERACTIONS -->
     <script>
         (function(){
+            // Sidebar Toggle
             const toggle = document.getElementById('sidebar-toggle');
             const sidebar = document.getElementById('sidebar');
             const icon = document.getElementById('sidebar-toggle-icon');
             const pageContent = document.getElementById('page-content');
 
-            if (!toggle || !sidebar) return;
-            toggle.addEventListener('click', function(e){
-                const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-                if (isOpen) {
-                    sidebar.classList.add('-translate-x-full');
-                    sidebar.classList.remove('translate-x-0');
-                    toggle.classList.remove('translate-x-64');
-                    icon.classList.remove('rotate-180');
-                    toggle.setAttribute('aria-expanded','false');
-                    if(pageContent) pageContent.classList.remove('ml-64');
-                } else {
-                    sidebar.classList.remove('-translate-x-full');
-                    sidebar.classList.add('translate-x-0');
-                    toggle.classList.add('translate-x-64');
-                    icon.classList.add('rotate-180');
-                    toggle.setAttribute('aria-expanded','true');
-                    if(pageContent) pageContent.classList.add('ml-64');
+            if (toggle && sidebar) {
+                toggle.addEventListener('click', function(e){
+                    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+                    if (isOpen) {
+                        sidebar.classList.add('-translate-x-full');
+                        sidebar.classList.remove('translate-x-0');
+                        toggle.classList.remove('translate-x-64');
+                        icon.classList.remove('rotate-180');
+                        toggle.setAttribute('aria-expanded','false');
+                        if(pageContent) pageContent.classList.remove('ml-64');
+                    } else {
+                        sidebar.classList.remove('-translate-x-full');
+                        sidebar.classList.add('translate-x-0');
+                        toggle.classList.add('translate-x-64');
+                        icon.classList.add('rotate-180');
+                        toggle.setAttribute('aria-expanded','true');
+                        if(pageContent) pageContent.classList.add('ml-64');
+                    }
+                });
+            }
+        })();
+
+        // Textarea auto-resize
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        // Focus and scroll to comment input for a post
+        function focusCommentInput(postId) {
+            const input = document.getElementById('comment-input-' + postId);
+            if (input) {
+                input.focus();
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // AJAX: Handle Likes
+        document.querySelectorAll('.like-form').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const postId = this.dataset.postId;
+                const btn = document.getElementById('like-btn-' + postId);
+                const formData = new FormData(this);
+
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'ok') {
+                            const label = btn.querySelector('.like-label');
+                            const count = btn.querySelector('.like-count');
+                            const svg = btn.querySelector('svg');
+                            const statText = document.getElementById('likes-stat-' + postId);
+
+                            count.textContent = `(${data.likes_count})`;
+                            statText.textContent = `${data.likes_count} ${data.likes_count === 1 ? 'like' : 'likes'}`;
+
+                            if (data.liked) {
+                                label.textContent = 'Liked';
+                                btn.className = 'inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100';
+                                svg.className = 'w-4 h-4 mr-1.5 fill-current text-rose-500';
+                            } else {
+                                label.textContent = 'Like';
+                                btn.className = 'inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-rose-600';
+                                svg.className = 'w-4 h-4 mr-1.5 text-slate-500 fill-none';
+                            }
+                        }
+                    } else {
+                        form.submit(); // fallback to normal submit
+                    }
+                } catch(err) {
+                    form.submit();
                 }
             });
-        })();
+        });
+
+        // AJAX: Handle Comment Submission
+        document.querySelectorAll('.comment-form').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const postId = this.dataset.postId;
+                const textarea = form.querySelector('textarea[name="content"]');
+                const content = textarea.value.trim();
+                if (!content) return;
+
+                const formData = new FormData(this);
+
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'ok') {
+                            const list = document.getElementById('comments-list-' + postId);
+                            const noComments = document.getElementById('no-comments-' + postId);
+                            if (noComments) noComments.remove();
+
+                            // Construct new comment HTML
+                            const commentDiv = document.createElement('div');
+                            commentDiv.id = 'comment-' + data.comment.id;
+                            commentDiv.className = 'bg-white rounded-lg p-3 border border-slate-200/80 shadow-xs space-y-1 transition-all';
+                            commentDiv.innerHTML = `
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0">
+                                            ${data.comment.author.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span class="text-xs font-bold text-slate-900">${data.comment.author}</span>
+                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                            ${data.comment.role}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400">• Just now</span>
+                                    </div>
+                                    <form method="post" action="${form.action}" class="inline-block delete-comment-form" data-comment-id="${data.comment.id}" data-post-id="${postId}">
+                                        <input type="hidden" name="csrfmiddlewaretoken" value="${form.querySelector('[name=csrfmiddlewaretoken]').value}">
+                                        <input type="hidden" name="action" value="delete_comment">
+                                        <input type="hidden" name="comment_id" value="${data.comment.id}">
+                                        <button type="submit" title="Delete comment" onclick="return confirm('Delete this comment?');" class="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                                <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap pl-8">${escapeHtml(data.comment.content)}</p>
+                            `;
+                            list.appendChild(commentDiv);
+
+                            // Update counters
+                            document.querySelectorAll('.comments-count-badge-' + postId).forEach(b => b.textContent = data.comments_count);
+                            const stat = document.getElementById('comments-stat-' + postId);
+                            if (stat) stat.textContent = `${data.comments_count} ${data.comments_count === 1 ? 'comment' : 'comments'}`;
+
+                            // Clear and reset textarea
+                            textarea.value = '';
+                            textarea.style.height = 'auto';
+
+                            // Attach delete listener to new comment
+                            attachDeleteListener(commentDiv.querySelector('.delete-comment-form'));
+                        }
+                    } else {
+                        form.submit();
+                    }
+                } catch(err) {
+                    form.submit();
+                }
+            });
+        });
+
+        // AJAX: Handle Comment Deletion
+        function attachDeleteListener(form) {
+            if (!form) return;
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!confirm('Delete this comment?')) return;
+
+                const commentId = this.dataset.commentId;
+                const postId = this.dataset.postId;
+                const formData = new FormData(this);
+
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'ok') {
+                            const commentEl = document.getElementById('comment-' + commentId);
+                            if (commentEl) commentEl.remove();
+
+                            if (data.comments_count !== undefined) {
+                                document.querySelectorAll('.comments-count-badge-' + postId).forEach(b => b.textContent = data.comments_count);
+                                const stat = document.getElementById('comments-stat-' + postId);
+                                if (stat) stat.textContent = `${data.comments_count} ${data.comments_count === 1 ? 'comment' : 'comments'}`;
+                            }
+                        }
+                    } else {
+                        form.submit();
+                    }
+                } catch(err) {
+                    form.submit();
+                }
+            });
+        }
+
+        document.querySelectorAll('.delete-comment-form').forEach(attachDeleteListener);
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 </body>
 </html>

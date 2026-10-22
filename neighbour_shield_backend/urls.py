@@ -2,8 +2,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from core.views_web import admin_dashboard, township_management, emergency_broadcast, volunteer_applications, \
-    community_board
+from core.views_web import (
+    admin_dashboard, township_management, emergency_broadcast, volunteer_applications,
+    community_board, safety_reports
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -12,6 +14,8 @@ urlpatterns = [
     path('broadcast/', emergency_broadcast, name='emergency-broadcast'),
 
     path('community/', community_board, name='community_board'),
+    path('community/reports/', safety_reports, name='safety-reports'),
+    path('reports/', safety_reports, name='safety-reports-alias'),
 
     path('volunteers/', volunteer_applications, name='volunteer_applications'),
     path('', admin_dashboard, name='dashboard'),

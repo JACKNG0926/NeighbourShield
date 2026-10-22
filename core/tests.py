@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -11,6 +12,9 @@ from core.models import (
     Property,
     SafetyPost,
     User,
+    CommunityPost,
+    CommunityPostComment,
+    CommunityPostLike,
 )
 from core.services import dispatch_emergency_broadcast
 
@@ -341,3 +345,247 @@ class UserProfileAndRegistrationAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("token", response.data)
         self.assertEqual(response.data["user"]["unit_address"], "Block C-10-02")
+
+
+class SafetyReportsWebViewTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin_reporter",
+            email="admin_rep@example.com",
+            password="AdminPassword123!",
+            role="admin",
+        )
+        self.resident = User.objects.create_user(
+            username="resident_reporter",
+            password="Password123!",
+            role="resident",
+            unit_address="A-01-01",
+            is_active=True,
+        )
+        self.volunteer = User.objects.create_user(
+            username="volunteer_reporter",
+            password="Password123!",
+            role="volunteer",
+            is_verified_volunteer=True,
+            is_volunteer_opted_in=True,
+            unit_address="B-02-02",
+            is_active=True,
+        )
+
+        self.hazard1 = SafetyPost.objects.create(
+            author=self.resident,
+            post_type="hazard",
+            category="broken_light",
+            severity="warning",
+            title="Broken street lamp near Block A",
+            description="The street light is completely dark at night.",
+            latitude=Decimal("3.123456"),
+            longitude=Decimal("101.654321"),
+            status="open",
+        )
+        self.hazard2 = SafetyPost.objects.create(
+            author=self.volunteer,
+            post_type="hazard",
+            category="road",
+            severity="critical",
+            title="Pothole on Main Boulevard",
+            description="Large pothole damaging cars.",
+            latitude=Decimal("3.123500"),
+            longitude=Decimal("101.654400"),
+            status="in_progress",
+        )
+
+    def test_unauthenticated_redirects_to_login(self):
+        url = "/community/reports/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertIn("/admin/login/", response.url)
+
+    def test_admin_can_access_safety_reports_view(self):
+        self.client.force_login(self.admin)
+        url = "/community/reports/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTemplateUsed(response, "core/safety_reports.html")
+        self.assertIn("reports", response.context)
+        self.assertEqual(response.context["stats"]["total"], 2)
+        self.assertEqual(response.context["stats"]["open"], 1)
+        self.assertEqual(response.context["stats"]["in_progress"], 1)
+
+    def test_filter_by_status(self):
+        self.client.force_login(self.admin)
+        url = "/community/reports/?status=open"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        reports = list(response.context["reports"])
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0].id, self.hazard1.id)
+
+    def test_filter_by_role(self):
+        self.client.force_login(self.admin)
+        url = "/community/reports/?role=volunteer"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        reports = list(response.context["reports"])
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0].id, self.hazard2.id)
+
+    def test_admin_update_status_action(self):
+        self.client.force_login(self.admin)
+        url = "/community/reports/"
+        payload = {
+            "action": "update_status",
+            "report_id": self.hazard1.id,
+            "status": "resolved",
+        }
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.hazard1.refresh_from_db()
+        self.assertEqual(self.hazard1.status, "resolved")
+        self.assertIsNotNone(self.hazard1.resolved_at)
+
+    def test_admin_verify_action(self):
+        self.client.force_login(self.admin)
+        url = "/community/reports/"
+        payload = {
+            "action": "verify",
+            "report_id": self.hazard1.id,
+        }
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.hazard1.refresh_from_db()
+        self.assertTrue(self.hazard1.is_verified)
+        self.assertEqual(self.hazard1.verified_by, self.admin)
+        self.assertIsNotNone(self.hazard1.verified_at)
+
+
+class CommunityBoardWebTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin_board",
+            password="AdminPassword123!",
+            email="admin_board@test.com",
+            role="admin",
+        )
+        self.resident = User.objects.create_user(
+            username="resident_board",
+            password="Password123!",
+            email="resident_board@test.com",
+            role="resident",
+        )
+        self.post = CommunityPost.objects.create(
+            author=self.resident,
+            title="Weekend Neighbourhood Cleanup",
+            content="Join us this Saturday at 9 AM at the community park!",
+            is_hidden=False,
+        )
+
+    def test_admin_can_access_community_board(self):
+        self.client.force_login(self.admin)
+        url = reverse("community_board")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTemplateUsed(response, "core/community_board.html")
+        self.assertIn("posts", response.context)
+        self.assertEqual(len(response.context["posts"]), 1)
+
+    def test_like_toggle_action(self):
+        self.client.force_login(self.admin)
+        url = reverse("community_board")
+
+        # 1. Like the post
+        response = self.client.post(url, {"action": "like", "post_id": self.post.id})
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(self.post.likes.count(), 1)
+        self.assertTrue(self.post.is_liked_by(self.admin))
+
+        # 2. Toggle unlike
+        response = self.client.post(url, {"action": "like", "post_id": self.post.id})
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(self.post.likes.count(), 0)
+        self.assertFalse(self.post.is_liked_by(self.admin))
+
+        # 3. Test AJAX like
+        ajax_response = self.client.post(
+            url,
+            {"action": "like", "post_id": self.post.id},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(ajax_response.status_code, status.HTTP_200_OK)
+        json_data = ajax_response.json()
+        self.assertEqual(json_data["status"], "ok")
+        self.assertTrue(json_data["liked"])
+        self.assertEqual(json_data["likes_count"], 1)
+
+    def test_comment_action(self):
+        self.client.force_login(self.admin)
+        url = reverse("community_board")
+
+        # 1. Add comment via regular POST
+        response = self.client.post(
+            url,
+            {
+                "action": "comment",
+                "post_id": self.post.id,
+                "content": "I'll bring some trash bags!",
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(self.post.comments.count(), 1)
+        comment = self.post.comments.first()
+        self.assertEqual(comment.author, self.admin)
+        self.assertEqual(comment.content, "I'll bring some trash bags!")
+
+        # 2. Add comment via AJAX
+        ajax_response = self.client.post(
+            url,
+            {
+                "action": "comment",
+                "post_id": self.post.id,
+                "content": "Count me in for recycling collection.",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(ajax_response.status_code, status.HTTP_200_OK)
+        json_data = ajax_response.json()
+        self.assertEqual(json_data["status"], "ok")
+        self.assertEqual(json_data["comments_count"], 2)
+        self.assertEqual(json_data["comment"]["author"], "admin_board")
+
+    def test_delete_comment_action(self):
+        self.client.force_login(self.admin)
+        url = reverse("community_board")
+        comment = CommunityPostComment.objects.create(
+            post=self.post,
+            author=self.resident,
+            content="Spam comment to be removed",
+        )
+        self.assertEqual(self.post.comments.count(), 1)
+
+        response = self.client.post(
+            url,
+            {"action": "delete_comment", "comment_id": comment.id},
+        )
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(self.post.comments.count(), 0)
+
+    def test_hide_and_show_comment_action(self):
+        self.client.force_login(self.admin)
+        url = reverse("community_board")
+        comment = CommunityPostComment.objects.create(
+            post=self.post,
+            author=self.resident,
+            content="Questionable comment",
+            is_hidden=False,
+        )
+
+        # Hide comment
+        self.client.post(url, {"action": "hide_comment", "comment_id": comment.id})
+        comment.refresh_from_db()
+        self.assertTrue(comment.is_hidden)
+
+        # Show comment
+        self.client.post(url, {"action": "show_comment", "comment_id": comment.id})
+        comment.refresh_from_db()
+        self.assertFalse(comment.is_hidden)
+

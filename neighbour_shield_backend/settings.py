@@ -169,6 +169,8 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
 # Load developer local overrides (ignored by Git)
 try:
     from .local_settings import *

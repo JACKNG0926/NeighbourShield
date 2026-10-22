@@ -10,11 +10,11 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS
 from rest_framework.authtoken.models import Token
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Area, Device, Property, User, Incident, SafetyPost, EscalationPolicy, CommunityPost
+from .models import Area, Device, Property, User, Incident, SafetyPost, EscalationPolicy, CommunityPost, CommunityPostLike, CommunityPostComment
 from .permissions import IsTownshipAdmin
 from .serializers import (AreaSerializer, DeviceSerializer, LocationUpdateSerializer,
                           MobileProfileSerializer, PropertySerializer, RegistrationSerializer,
-                          UserSerializer, IncidentSerializer, SafetyPostSerializer, CommunityPostSerializer)
+                          UserSerializer, IncidentSerializer, SafetyPostSerializer, CommunityPostSerializer, CommunityPostCommentSerializer)
 
 
 class TokenLoginView(APIView):
@@ -284,4 +284,39 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        existing_like = CommunityPostLike.objects.filter(post=post, user=request.user)
+        if existing_like.exists():
+            existing_like.delete()
+            is_liked = False
+        else:
+            CommunityPostLike.objects.create(post=post, user=request.user)
+            is_liked = True
+        return Response({
+            'is_liked': is_liked,
+            'likes_count': post.likes.count(),
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get', 'post'], permission_classes=[IsAuthenticated])
+    def comments(self, request, pk=None):
+        post = self.get_object()
+        if request.method == 'GET':
+            comments = post.comments.filter(is_hidden=False).select_related('author').order_by('created_at')
+            serializer = CommunityPostCommentSerializer(comments, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({'detail': 'Comment content cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        comment = CommunityPostComment.objects.create(
+            post=post,
+            author=request.user,
+            content=content,
+        )
+        serializer = CommunityPostCommentSerializer(comment, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 

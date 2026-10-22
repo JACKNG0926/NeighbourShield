@@ -571,3 +571,46 @@ class CommunityPost(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def like_count(self):
+        return self.likes.count()
+
+    @property
+    def comment_count(self):
+        return self.comments.filter(is_hidden=False).count()
+
+    def is_liked_by(self, user):
+        if not user or not user.is_authenticated:
+            return False
+        return self.likes.filter(user=user).exists()
+
+
+class CommunityPostLike(models.Model):
+    """Likes for community board posts."""
+    post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='likes')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_post_likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} likes {self.post.title}"
+
+
+class CommunityPostComment(models.Model):
+    """Comments on community board posts."""
+    post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_post_comments')
+    content = models.TextField()
+    is_hidden = models.BooleanField(default=False, help_text="Admin can hide inappropriate comments")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Comment by {self.author.username} on {self.post.title}"
+
