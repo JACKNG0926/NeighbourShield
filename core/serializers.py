@@ -2,6 +2,29 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from .models import Area, Device, Property, User, Incident, SafetyPost, CommunityPost, CommunityPostComment, CommunityPostLike
 
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+
+def _check_image(file):
+    if file is not None and file.size > MAX_IMAGE_BYTES:
+        raise serializers.ValidationError('Image must be 5 MB or smaller.')
+    return file
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Current password is incorrect.')
+        return value
+
+    def validate_new_password(self, value):
+        validate_password(value, user=self.context['request'].user)
+        return value
+
 
 class AreaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -92,7 +115,8 @@ class IncidentSerializer(serializers.ModelSerializer):
         model = Incident
         fields = ('id', 'user', 'latitude', 'longitude', 'message', 'incident_type', 'status',
                   'created_at', 'escalation_level', 'next_escalation_at', 'acknowledged_by',
-                  'acknowledged_at', 'resolved_at', 'resolution_note')
+                  'acknowledged_at', 'resolved_at', 'resolution_note', 
+                  'location_notes', 'contact_phone') # <-- ADD THESE
         read_only_fields = ('user', 'status', 'escalation_level', 'next_escalation_at',
                             'acknowledged_by', 'acknowledged_at', 'resolved_at', 'resolution_note')
         extra_kwargs = {
@@ -118,6 +142,9 @@ class SafetyPostSerializer(serializers.ModelSerializer):
                   'is_verified', 'verified_at', 'resolved_at', 'expires_at', 'created_at')
         read_only_fields = ('author', 'status', 'is_verified', 'verified_at', 'resolved_at',
                             'created_at')
+
+    def validate_image(self, value):
+        return _check_image(value)
 
     def validate_post_type(self, value):
         user = self.context['request'].user
@@ -145,8 +172,11 @@ class CommunityPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CommunityPost
-        fields = ['id', 'author_name', 'author_area', 'title', 'content', 'is_hidden', 'created_at', 'likes_count', 'comments_count', 'is_liked']
+        fields = ['id', 'author_name', 'author_area', 'title', 'content', 'image', 'is_hidden', 'created_at', 'likes_count', 'comments_count', 'is_liked']
         read_only_fields = ['is_hidden', 'created_at', 'likes_count', 'comments_count', 'is_liked']
+
+    def validate_image(self, value):
+        return _check_image(value)
 
     def get_is_liked(self, obj):
         request = self.context.get('request')

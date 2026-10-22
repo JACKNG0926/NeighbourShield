@@ -73,6 +73,7 @@
             <div class="flex-1 flex justify-between items-center">
                 <h1 class="text-xl font-bold text-slate-800 tracking-tight ml-8 md:ml-0">Dashboard Overview</h1>
                 <div class="flex items-center space-x-4">
+                    <button id="sound-toggle" type="button" class="text-sm font-semibold rounded-full px-3 py-1.5 border border-slate-300 bg-white text-slate-600 hover:bg-slate-100">🔇 Enable alert sound</button>
                     <span class="text-sm font-medium text-slate-500 hidden sm:block">Logged in as:</span>
                     <div class="flex items-center gap-2 bg-slate-100 rounded-full py-1.5 px-3 border border-slate-200">
                         <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase">
@@ -141,18 +142,20 @@
                     <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
                         <h2 class="text-base font-semibold text-slate-800">Active SOS Alerts</h2>
                     </div>
-                    <div class="overflow-y-auto flex-1 p-0">
+                    <div class="overflow-auto flex-1 p-0">
                         <table class="min-w-full divide-y divide-slate-200">
                             <thead class="bg-slate-50 sticky top-0 z-10">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Resident</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Resident</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Address</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-slate-200 text-sm" id="incidents-table-body">
                                 <tr>
-                                    <td colspan="3" class="px-6 py-8 text-center text-slate-500">
+                                    <td colspan="5" class="px-6 py-8 text-center text-slate-500">
                                         <svg class="animate-spin h-5 w-5 mr-3 inline text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -256,6 +259,43 @@
             map.fitBounds(mapBounds, {padding: [30, 30], maxZoom: 15});
         }
 
+        // Escape anything that came from a user before putting it in innerHTML.
+        function esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // Alert siren (browsers only allow sound after a click, hence the button).
+        let audioCtx = null, soundOn = false, seenIds = null;
+        const soundBtn = document.getElementById('sound-toggle');
+        function playSiren(seconds) {
+            if (!soundOn || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            gain.gain.value = 0.25;
+            const t0 = audioCtx.currentTime;
+            for (let t = 0; t < seconds; t += 1.2) {
+                osc.frequency.setValueAtTime(650, t0 + t);
+                osc.frequency.linearRampToValueAtTime(1250, t0 + t + 0.6);
+                osc.frequency.linearRampToValueAtTime(650, t0 + t + 1.2);
+            }
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(t0);
+            osc.stop(t0 + seconds);
+        }
+        soundBtn.addEventListener('click', function () {
+            soundOn = !soundOn;
+            if (soundOn) {
+                audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                playSiren(1.2); // short test beep
+            }
+            soundBtn.textContent = soundOn ? '🔊 Alert sound on' : '🔇 Enable alert sound';
+        });
+
+        const TYPE_LABELS = {medical: 'Medical', crime: 'Crime / security', fire: 'Fire', accident: 'Accident', backup: 'Backup request', other: 'Other'};
+
         // 4. Fetch and update active incidents (Polling)
         async function fetchActiveIncidents() {
             try {
@@ -269,6 +309,11 @@
                 // Update Dynamic KPI
                 document.getElementById('kpi-incidents').innerText = activeIncidents.length;
 
+                // Ring for unacknowledged incidents that appeared after the first load
+                const waitingIds = activeIncidents.filter(i => i.status === 'pending' || i.status === 'escalated').map(i => i.id);
+                if (seenIds !== null && waitingIds.some(id => !seenIds.has(id))) playSiren(6);
+                seenIds = new Set([...(seenIds || []), ...waitingIds]);
+
                 // Update Map
                 incidentLayer.clearLayers();
                 activeIncidents.forEach(inc => {
@@ -279,7 +324,14 @@
 
                     let timeStr = new Date(inc.created_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-                    marker.bindPopup(`<div class="text-sm"><strong>Resident:</strong> ${inc.user.username}<br><strong>Status:</strong> ${inc.status.toUpperCase()}<br><strong>Time:</strong> ${timeStr}</div>`);
+                    marker.bindPopup(`<div class="text-sm">
+                        <strong>SOS #${esc(inc.id)}</strong> · ${esc(TYPE_LABELS[inc.incident_type] || 'Other')}<br>
+                        <strong>Resident:</strong> ${esc(inc.user && inc.user.username)}<br>
+                        <strong>Phone:</strong> ${esc(inc.contact_phone) || 'Not provided'}<br>
+                        <strong>Address:</strong> ${esc(inc.location_notes) || 'Not provided'}<br>
+                        <strong>Status:</strong> ${esc(inc.status.toUpperCase())}<br>
+                        <strong>Time:</strong> ${esc(timeStr)}
+                        ${inc.message ? '<br><strong>Message:</strong> ' + esc(inc.message) : ''}</div>`);
                     incidentLayer.addLayer(marker);
                 });
 
@@ -288,7 +340,7 @@
                 tbody.innerHTML = '';
 
                 if (activeIncidents.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500 bg-slate-50/50">No active incidents at the moment.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500 bg-slate-50/50">No active incidents at the moment.</td></tr>`;
                     return;
                 }
 
@@ -307,9 +359,11 @@
                     let tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition-colors';
                     tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-slate-900 font-medium">${inc.user.username}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-slate-500">${timeStr}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-slate-900 font-medium">${esc(inc.user && inc.user.username)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-slate-700">${esc(inc.contact_phone) || '<span class="text-slate-400">-</span>'}</td>
+                        <td class="px-4 py-4 text-slate-700">${esc(inc.location_notes) || '<span class="text-slate-400">-</span>'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap">${statusBadge}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-slate-500">${esc(timeStr)}</td>
                     `;
                     tbody.appendChild(tr);
                 });

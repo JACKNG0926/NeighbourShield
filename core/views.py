@@ -1,5 +1,12 @@
-from django.db import models
+import logging
+
+from django.conf import settings
+from django.core.mail import send_mail
+from django.db import models, transaction
 from django.contrib.auth import authenticate
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from math import asin, cos, radians, sin, sqrt
 from django.utils import timezone
 from rest_framework import viewsets, status
@@ -8,13 +15,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.authtoken.models import Token
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Area, Device, Property, User, Incident, SafetyPost, EscalationPolicy, CommunityPost, CommunityPostLike, CommunityPostComment
+from .models import Area, Device, Property, User, Incident, IncidentLog, SafetyPost, EscalationPolicy, CommunityPost, CommunityPostLike, CommunityPostComment
 from .permissions import IsTownshipAdmin
-from .serializers import (AreaSerializer, DeviceSerializer, LocationUpdateSerializer,
+from .serializers import (AreaSerializer, ChangePasswordSerializer, DeviceSerializer, LocationUpdateSerializer,
                           MobileProfileSerializer, PropertySerializer, RegistrationSerializer,
                           UserSerializer, IncidentSerializer, SafetyPostSerializer, CommunityPostSerializer, CommunityPostCommentSerializer)
+
+
+logger = logging.getLogger(__name__)
 
 
 class TokenLoginView(APIView):
@@ -179,8 +190,54 @@ class IncidentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        incident = Incident.create_sos(user=request.user, **serializer.validated_data)
+        data = dict(serializer.validated_data)
+        user = request.user
+        incident_type = data.get('incident_type', 'other')
+
+        if incident_type == 'backup':
+            # Only responders may ask for backup, and only one open request at a time.
+            if not (user.is_active and (user.role == 'security' or user.is_eligible_volunteer)):
+                return Response({'detail': 'Only responders can request backup.'},
+                                status=status.HTTP_403_FORBIDDEN)
+            if Incident.objects.filter(user=user, incident_type='backup',
+                                       status__in=Incident.OPEN_STATUSES).exists():
+                return Response({'detail': 'You already have an active backup request.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if not data.get('contact_phone'):
+                data['contact_phone'] = (user.phone_number or '')[:20]
+        else:
+            # Server-side fallback so responders always get the resident's phone and
+            # unit address, even if the client did not send them.
+            if not data.get('contact_phone'):
+                data['contact_phone'] = (user.phone_number or '')[:20]
+            if not data.get('location_notes'):
+                data['location_notes'] = (user.unit_address or '')[:255]
+
+        incident = Incident.create_sos(user=user, **data)
         return Response(self.get_serializer(incident).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        user = request.user
+        if not (user.is_township_admin or (user.is_active and user.role == 'security')):
+            return Response({'detail': 'Only security or administrators can resolve incidents.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        note = str(request.data.get('note', '') or '')[:2000]
+        with transaction.atomic():
+            incident = Incident.objects.select_for_update().get(pk=self.get_object().pk)
+            if incident.status in ('resolved', 'cancelled'):
+                return Response({'detail': 'This incident is already closed.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            incident.status = 'resolved'
+            incident.resolved_at = timezone.now()
+            incident.resolved_by = user
+            incident.resolution_note = note
+            incident.next_escalation_at = None
+            incident.save(update_fields=['status', 'resolved_at', 'resolved_by',
+                                         'resolution_note', 'next_escalation_at'])
+            IncidentLog.objects.create(incident=incident, action='resolved', actor=user,
+                                       detail='Resolved', data={'note': note})
+        return Response(self.get_serializer(incident).data)
 
     @action(detail=True, methods=['post'])
     def acknowledge(self, request, pk=None):
@@ -222,7 +279,7 @@ class SafetyPostViewSet(viewsets.ModelViewSet):
         Resolves audience based on user area or township-wide broadcasts.
         """
         user = request.user
-        broadcasts = SafetyPost.objects.filter(post_type='broadcast', status='open')
+        broadcasts = SafetyPost.active_broadcasts()  # open AND not expired
         user_area = getattr(user, 'area', None) or getattr(getattr(user, 'residence', None), 'area', None)
         if user_area:
             broadcasts = broadcasts.filter(
@@ -271,10 +328,62 @@ class VolunteerApplicationView(APIView):
             status=status.HTTP_200_OK,
         )
 
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        # Rotate the token so any old sessions stop working; the app stores the new one.
+        Token.objects.filter(user=user).delete()
+        token = Token.objects.create(user=user)
+        return Response({'token': token.key, 'detail': 'Password changed.'})
+
+
+class PasswordResetRequestView(APIView):
+    """Emails a reset link. The link opens Django's built-in reset page
+    (django.contrib.auth.urls mounted at /accounts/)."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        email = str(request.data.get('email', '') or '').strip()
+        if not email or '@' not in email:
+            return Response({'detail': 'Enter a valid email address.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        for user in User.objects.filter(email__iexact=email, is_active=True):
+            if not user.has_usable_password():
+                continue
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            link = f"{settings.SITE_URL.rstrip('/')}/accounts/reset/{uid}/{token}/"
+            try:
+                send_mail(
+                    subject='NeighbourShield password reset',
+                    message=(f'Hi {user.username},\n\nUse this link to choose a new password:\n'
+                             f'{link}\n\nIf you did not request this, ignore this email.'),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception('Could not send password reset email to user %s', user.pk)
+
+        # Same answer whether or not the account exists (prevents email enumeration).
+        return Response({'detail': 'If an account with that email exists, a reset link has been sent.'})
+
+
 class CommunityPostViewSet(viewsets.ModelViewSet):
     queryset = CommunityPost.objects.all().order_by('-created_at')
     serializer_class = CommunityPostSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         user = self.request.user

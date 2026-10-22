@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -153,7 +154,50 @@ MAILERS = {
     },
 }
 
+# ---------------------------------------------------------------------
+# Email (password reset). Defaults to printing the email in the Django
+# terminal, which is enough for a demo. For real email set EMAIL_BACKEND to
+# django.core.mail.backends.smtp.EmailBackend plus the EMAIL_* env vars.
+# SITE_URL must be reachable from the user's phone/browser (LAN IP in dev).
+# ---------------------------------------------------------------------
+SITE_URL = os.environ.get('SITE_URL', 'http://192.168.0.5:8000')
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'NeighbourShield <no-reply@neighbourshield.local>')
+
+# ---------------------------------------------------------------------
+# Celery + Redis (escalation timer, stale-location purge)
+# ---------------------------------------------------------------------
+CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    'escalate-overdue-incidents': {
+        'task': 'core.tasks.escalate_overdue_incidents',
+        'schedule': 15.0,
+    },
+    'purge-stale-locations': {
+        'task': 'core.tasks.purge_stale_locations',
+        'schedule': 300.0,
+    },
+}
+
+# ---------------------------------------------------------------------
+# Twilio WhatsApp sandbox (leave blank to disable). Keep real values in env vars.
+# ADMIN_WHATSAPP_TO = comma-separated numbers that joined the sandbox, e.g. +60123456789
+# ---------------------------------------------------------------------
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_WHATSAPP_FROM = os.environ.get('TWILIO_WHATSAPP_FROM', '+14155238886')  # sandbox number
+ADMIN_WHATSAPP_TO = [n.strip() for n in os.environ.get('ADMIN_WHATSAPP_TO', '').split(',') if n.strip()]
+SOS_MEETING_LINK = os.environ.get('SOS_MEETING_LINK', 'https://zoom.us/j/0000000000')  # replace with your real link
+
 REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_RATES': {'password_reset': '5/hour'},
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
@@ -175,4 +219,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 try:
     from .local_settings import *
 except ImportError:
-    pass
+    pass

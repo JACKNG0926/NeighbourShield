@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from django.contrib.auth.models import AbstractUser
@@ -7,6 +8,8 @@ from django.utils import timezone
 
 from neighbour_shield_backend import settings
 from math import asin, cos, radians, sin, sqrt 
+
+logger = logging.getLogger(__name__)
 
 
 # =====================================================================
@@ -229,12 +232,13 @@ class Incident(models.Model):
     )
     TYPE_CHOICES = (
         ('medical', 'Medical'), ('crime', 'Crime / security'), ('fire', 'Fire'),
-        ('accident', 'Accident'), ('other', 'Other'),
+        ('accident', 'Accident'), ('backup', 'Backup request'), ('other', 'Other'),
     )
     OPEN_STATUSES = ('pending', 'acknowledged', 'escalated')
     AWAITING_ACK_STATUSES = ('pending', 'escalated')
 
     # PROTECT: deactivate users instead of deleting them, so history survives.
+    message = models.CharField(max_length=255, blank=True)
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='incidents')
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
@@ -243,6 +247,8 @@ class Incident(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES,
                               default='pending', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    location_notes = models.CharField(max_length=255, blank=True, help_text="e.g. Floor 14, Unit A-12-03")
+    contact_phone = models.CharField(max_length=20, blank=True, help_text="Emergency contact number")
 
     # Escalation (queried by the Celery beat task)
     escalation_level = models.PositiveSmallIntegerField(default=0)
@@ -278,7 +284,7 @@ class Incident(models.Model):
 
     # ---- workflow helpers (call these from your API / Celery tasks) --------
     @classmethod
-    def create_sos(cls, user, latitude, longitude, message='', incident_type='other'):
+    def create_sos(cls, user, latitude, longitude, message='', incident_type='other',location_notes='', contact_phone=''):
         """Create the incident, start the escalation clock and write the first log line."""
         # Local import to prevent circular dependency issues
         from .services import dispatch_sos_notifications
@@ -288,12 +294,18 @@ class Incident(models.Model):
             incident = cls.objects.create(
                 user=user, latitude=latitude, longitude=longitude, message=message,
                 incident_type=incident_type,
+                location_notes=location_notes,  # <-- ADD THIS
+                contact_phone=contact_phone,    # <-- ADD THIS
                 next_escalation_at=timezone.now() + timedelta(seconds=policy.ack_timeout_seconds))
             IncidentLog.objects.create(incident=incident, action='triggered', actor=user,
                                        detail='SOS triggered')
 
-        # Trigger wave 0 notifications immediately after database commit
-        dispatch_sos_notifications(incident)
+        # Trigger wave 0 notifications after the incident is saved. A notification
+        # failure must never make the SOS request itself fail.
+        try:
+            dispatch_sos_notifications(incident)
+        except Exception:
+            logger.exception('Notification dispatch failed for SOS #%s', incident.pk)
 
         return incident
 
@@ -531,6 +543,14 @@ class SafetyPost(models.Model):
     def is_official(self):
         return self.post_type in ('announcement', 'broadcast')
 
+    @classmethod
+    def active_broadcasts(cls):
+        """Open, non-expired emergency broadcasts. Use this for the app endpoint
+        and for the web dashboard so resolved/expired broadcasts are hidden."""
+        now = timezone.now()
+        return cls.objects.filter(post_type='broadcast', status='open').filter(
+            models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now))
+
     def clean(self):
         super().clean()
         if not self.author_id:
@@ -566,6 +586,7 @@ class CommunityPost(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_posts')
     title = models.CharField(max_length=200)
     content = models.TextField()
+    image = models.ImageField(upload_to='community/', null=True, blank=True)
     is_hidden = models.BooleanField(default=False, help_text="Admin can hide inappropriate posts")
     created_at = models.DateTimeField(auto_now_add=True)
 
