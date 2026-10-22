@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Safety Reports - NeighbourShield</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .report-card-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .report-card-transition:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <!-- SIDEBAR -->
+    <div class="fixed left-0 top-0 h-full z-40">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" class="fixed left-0 top-1/2 z-50 -translate-y-1/2 w-8 h-16 ml-0 rounded-r-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 focus:outline-none shadow-lg transition-transform duration-200 border-y border-r border-indigo-500">
+            <svg id="sidebar-toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-300 transform -translate-x-full transition-transform duration-200 z-40 shadow-2xl">
+            <div class="flex h-16 items-center px-6 bg-slate-950 border-b border-slate-800 text-xl font-bold text-white tracking-tight">
+                NeighbourShield
+            </div>
+            <nav class="p-4 space-y-1">
+                <a href="{% url 'dashboard' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Dashboard
+                </a>
+                <a href="{% url 'township-management' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    Township setup
+                </a>
+                <a href="{% url 'volunteer_applications' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Volunteer Apps
+                </a>
+                <a href="{% url 'emergency-broadcast' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                    Broadcast Alerts
+                </a>
+                <a href="{% url 'community_board' %}" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
+                    Community Board
+                </a>
+                <a href="{% url 'safety-reports' %}" class="flex items-center rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    Safety Reports
+                </a>
+                <a href="/admin/" class="flex items-center rounded-lg px-4 py-3 text-sm font-medium hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Django admin
+                </a>
+            </nav>
+        </aside>
+    </div>
+
+    <!-- WRAPPER FOR MAIN CONTENT -->
+    <div id="page-content" class="transition-all duration-200 ml-0 flex flex-col min-h-screen">
+        <!-- HEADER -->
+        <header class="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center px-4 lg:px-8 sticky top-0 z-30">
+            <div class="flex-1 flex justify-between items-center">
+                <div class="flex items-center space-x-3 ml-8 md:ml-0">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    </span>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 tracking-tight">Community Safety Reports</h1>
+                        <p class="text-xs text-slate-500 hidden sm:block">Review and action incident & hazard reports submitted by residents and volunteers</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-full py-1.5 px-3 border border-slate-200">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                            {{ request.user.username|make_list|first }}
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 hidden sm:block">{{ request.user.username }}</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 lg:p-8 space-y-6">
+            <!-- NOTIFICATIONS -->
+            {% if messages %}
+            <div class="space-y-2">
+                {% for message in messages %}
+                <div class="rounded-lg {% if message.tags == 'error' %}bg-rose-50 border-rose-200 text-rose-800{% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-emerald-50 border-emerald-200 text-emerald-800{% endif %} border p-4 text-sm shadow-sm flex items-center justify-between">
+                    <div class="flex items-center">
+                        {% if message.tags == 'error' %}
+                        <svg class="w-5 h-5 mr-2 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% else %}
+                        <svg class="w-5 h-5 mr-2 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% endif %}
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- SECTION TABS (Discussion Board vs Safety Reports) -->
+            <div class="flex items-center space-x-2 border-b border-slate-200 pb-3">
+                <a href="{% url 'safety-reports' %}" class="flex items-center space-x-2 px-4 py-2 text-sm font-bold rounded-lg bg-indigo-600 text-white shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    <span>Safety & Hazard Reports</span>
+                    <span class="ml-1.5 px-2 py-0.5 text-xs rounded-full bg-indigo-500 text-white font-bold">{{ stats.total }}</span>
+                </a>
+                <a href="{% url 'community_board' %}" class="flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
+                    <span>Discussion Board</span>
+                </a>
+            </div>
+
+            <!-- KPI STATS CARDS -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <!-- Total -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Reports</span>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-slate-900">{{ stats.total }}</span>
+                        <span class="text-xs text-indigo-600 font-medium">All Time</span>
+                    </div>
+                </div>
+                <!-- Open -->
+                <div class="bg-white p-4 rounded-xl border border-amber-200 bg-amber-50/30 shadow-sm flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-amber-700 uppercase tracking-wider">Action Needed</span>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-amber-700">{{ stats.open }}</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Open</span>
+                    </div>
+                </div>
+                <!-- In Progress -->
+                <div class="bg-white p-4 rounded-xl border border-sky-200 bg-sky-50/30 shadow-sm flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-sky-700 uppercase tracking-wider">In Progress</span>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-sky-700">{{ stats.in_progress }}</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800">Active</span>
+                    </div>
+                </div>
+                <!-- Critical -->
+                <div class="bg-white p-4 rounded-xl border border-rose-200 bg-rose-50/30 shadow-sm flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-rose-700 uppercase tracking-wider">Critical Severity</span>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-rose-700">{{ stats.critical }}</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">High Alert</span>
+                    </div>
+                </div>
+                <!-- Resolved -->
+                <div class="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-sm flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Resolved</span>
+                    <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-emerald-700">{{ stats.resolved }}</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Closed</span>
+                    </div>
+                </div>
+                <!-- Sources -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Submitter Origin</span>
+                    <div class="mt-2 space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-600 font-medium">Volunteers:</span>
+                            <span class="font-bold text-emerald-700">{{ stats.volunteer_reports }}</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-600 font-medium">Residents:</span>
+                            <span class="font-bold text-indigo-700">{{ stats.resident_reports }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILTERS & SEARCH CONTROL BAR -->
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <form method="get" action="{% url 'safety-reports' %}" class="space-y-4">
+                    <!-- Status Filter Tabs -->
+                    <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
+                        <div class="flex items-center flex-wrap gap-1">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Status:</span>
+                            <a href="?status=all&severity={{ current_severity }}&category={{ current_category }}&role={{ current_role }}&q={{ search_query }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors {% if current_status == 'all' %}bg-slate-900 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                                All ({{ stats.total }})
+                            </a>
+                            <a href="?status=open&severity={{ current_severity }}&category={{ current_category }}&role={{ current_role }}&q={{ search_query }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors {% if current_status == 'open' %}bg-amber-600 text-white font-semibold{% else %}bg-amber-50 text-amber-800 hover:bg-amber-100{% endif %}">
+                                Open ({{ stats.open }})
+                            </a>
+                            <a href="?status=in_progress&severity={{ current_severity }}&category={{ current_category }}&role={{ current_role }}&q={{ search_query }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors {% if current_status == 'in_progress' %}bg-sky-600 text-white font-semibold{% else %}bg-sky-50 text-sky-800 hover:bg-sky-100{% endif %}">
+                                In Progress ({{ stats.in_progress }})
+                            </a>
+                            <a href="?status=resolved&severity={{ current_severity }}&category={{ current_category }}&role={{ current_role }}&q={{ search_query }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors {% if current_status == 'resolved' %}bg-emerald-600 text-white font-semibold{% else %}bg-emerald-50 text-emerald-800 hover:bg-emerald-100{% endif %}">
+                                Resolved ({{ stats.resolved }})
+                            </a>
+                            <a href="?status=rejected&severity={{ current_severity }}&category={{ current_category }}&role={{ current_role }}&q={{ search_query }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors {% if current_status == 'rejected' %}bg-slate-700 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                                Rejected
+                            </a>
+                        </div>
+
+                        <!-- Shortcut to Live Hazard Map -->
+                        <a href="#hazard-map-card" class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-sm transition-colors">
+                            <svg class="w-4 h-4 mr-1.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                            View on Hazard Map
+                        </a>
+                    </div>
+
+                    <!-- Dropdowns and Search Input -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        <input type="hidden" name="status" value="{{ current_status }}">
+
+                        <!-- Search -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Search Reports</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                </span>
+                                <input type="text" name="q" value="{{ search_query }}" placeholder="Search title, description, or submitter..." class="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <!-- Submitter Role -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Submitter Role</label>
+                            <select name="role" class="w-full py-2 px-3 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="all" {% if current_role == 'all' %}selected{% endif %}>All Submitters</option>
+                                <option value="resident" {% if current_role == 'resident' %}selected{% endif %}>Residents Only</option>
+                                <option value="volunteer" {% if current_role == 'volunteer' %}selected{% endif %}>Volunteer Responders Only</option>
+                            </select>
+                        </div>
+
+                        <!-- Severity -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Severity</label>
+                            <select name="severity" class="w-full py-2 px-3 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="all" {% if current_severity == 'all' %}selected{% endif %}>All Severities</option>
+                                {% for val, label in severity_choices %}
+                                <option value="{{ val }}" {% if current_severity == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Category -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Category</label>
+                            <select name="category" class="w-full py-2 px-3 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="all" {% if current_category == 'all' %}selected{% endif %}>All Categories</option>
+                                {% for val, label in category_choices %}
+                                <option value="{{ val }}" {% if current_category == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="flex items-center justify-end space-x-2 pt-1">
+                        {% if search_query or current_status != 'all' or current_severity != 'all' or current_category != 'all' or current_role != 'all' %}
+                        <a href="{% url 'safety-reports' %}" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                            Clear Filters
+                        </a>
+                        {% endif %}
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors">
+                            Apply Filters
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- INTERACTIVE HAZARD MAP (MIMICKING DASHBOARD DESIGN) -->
+            <div id="hazard-map-card" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-2">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-semibold text-slate-800">Live Hazard & Safety Map</h2>
+                            <p class="text-xs text-slate-500">Interactive spatial tracking of community hazards and township boundaries</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 mr-1.5 shadow-sm"></span>Critical</span>
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 mr-1.5 shadow-sm"></span>Warning</span>
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5 shadow-sm"></span>Info</span>
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5 shadow-sm"></span>Resolved</span>
+                    </div>
+                </div>
+                <div class="p-1 flex-1">
+                    <div id="map" class="w-full h-[460px] rounded-lg z-0"></div>
+                </div>
+            </div>
+
+            <!-- REPORT LIST -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-bold text-slate-900">
+                        Reports Feed
+                        <span class="text-xs font-normal text-slate-500 ml-2">({{ reports|length }} matching reports)</span>
+                    </h2>
+                </div>
+
+                {% if reports %}
+                <div class="grid grid-cols-1 gap-4">
+                    {% for report in reports %}
+                    <div id="report-card-{{ report.id }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm report-card-transition space-y-4">
+                        <!-- Card Header: Badges & Time -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <!-- Category badge -->
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {% if report.category == 'broken_light' %}💡
+                                    {% elif report.category == 'suspicious' %}🚨
+                                    {% elif report.category == 'road' %}🚧
+                                    {% elif report.category == 'flood' %}🌊
+                                    {% elif report.category == 'fire' %}🔥
+                                    {% elif report.category == 'road_closure' %}⛔
+                                    {% elif report.category == 'maintenance' %}🔧
+                                    {% else %}📌
+                                    {% endif %}
+                                    <span class="ml-1.5">{{ report.get_category_display }}</span>
+                                </span>
+
+                                <!-- Severity badge -->
+                                {% if report.severity == 'critical' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-600 mr-1.5 animate-pulse"></span>
+                                    Critical Severity
+                                </span>
+                                {% elif report.severity == 'warning' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                    Warning
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400 mr-1.5"></span>
+                                    Info
+                                </span>
+                                {% endif %}
+
+                                <!-- Verification badge -->
+                                {% if report.is_verified %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
+                                    <svg class="w-3.5 h-3.5 mr-1 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    Verified
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">
+                                    Unverified
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Status Badge & Date -->
+                            <div class="flex items-center space-x-3 text-xs text-slate-500">
+                                <span>Reported {{ report.created_at|date:"d M Y, H:i" }}</span>
+                                {% if report.status == 'open' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                    Open
+                                </span>
+                                {% elif report.status == 'in_progress' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                                    In Progress
+                                </span>
+                                {% elif report.status == 'resolved' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Resolved
+                                </span>
+                                {% elif report.status == 'rejected' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700 border border-slate-300">
+                                    Rejected
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Card Body: Content & Image -->
+                        <div class="flex flex-col md:flex-row gap-5">
+                            <!-- Image thumbnail if available -->
+                            {% if report.image %}
+                            <div class="md:w-48 flex-shrink-0">
+                                <div class="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-100 aspect-video md:aspect-square cursor-pointer" onclick="openImageModal('{{ report.image.url }}', '{{ report.title|escapejs }}')">
+                                    <img src="{{ report.image.url }}" alt="{{ report.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                                    <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                                        View Photo
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Details -->
+                            <div class="flex-1 space-y-3">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">{{ report.title }}</h3>
+                                    <p class="text-sm text-slate-700 mt-1 leading-relaxed whitespace-pre-line">{{ report.description }}</p>
+                                </div>
+
+                                <!-- Submitter & Location Details Box -->
+                                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                    <!-- Submitter -->
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                                            {{ report.author.username|make_list|first }}
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center space-x-1.5">
+                                                <span class="font-bold text-slate-900">{{ report.author.username }}</span>
+                                                {% if report.author.role == 'volunteer' or report.author.is_verified_volunteer %}
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                    ★ Volunteer
+                                                </span>
+                                                {% else %}
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                    Resident
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-slate-500 flex items-center space-x-2 mt-0.5">
+                                                {% if report.author.phone_number %}
+                                                <a href="tel:{{ report.author.phone_number }}" class="hover:text-indigo-600 flex items-center">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                                                    {{ report.author.phone_number }}
+                                                </a>
+                                                {% endif %}
+                                                {% if report.author.unit_address %}
+                                                <span>• {{ report.author.unit_address }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Location Info -->
+                                    <div class="flex flex-col justify-center space-y-1">
+                                        <div class="flex items-center text-slate-700">
+                                            <svg class="w-3.5 h-3.5 mr-1 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                                            <span class="font-medium">
+                                                {% if report.area %}
+                                                {{ report.area.name }}
+                                                {% else %}
+                                                Township Wide
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        {% if report.latitude and report.longitude %}
+                                        <div class="text-slate-500 flex items-center flex-wrap gap-2 pt-0.5">
+                                            <span>GPS: {{ report.latitude|floatformat:4 }}, {{ report.longitude|floatformat:4 }}</span>
+                                            <button type="button" onclick="focusReportOnMap({{ report.latitude }}, {{ report.longitude }}, {{ report.id }})" class="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center">
+                                                <svg class="w-3.5 h-3.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                                                Locate on Map
+                                            </button>
+                                            <a href="https://maps.google.com/?q={{ report.latitude }},{{ report.longitude }}" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-slate-600">
+                                                Google Maps ↗
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer: Admin Actions Bar -->
+                        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                            <!-- Verification Action -->
+                            <form method="post" action="{% url 'safety-reports' %}" class="flex items-center space-x-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="report_id" value="{{ report.id }}">
+                                {% if report.is_verified %}
+                                <input type="hidden" name="action" value="unverify">
+                                <button type="submit" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors">
+                                    Revoke Verification
+                                </button>
+                                {% else %}
+                                <input type="hidden" name="action" value="verify">
+                                <button type="submit" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors flex items-center">
+                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    Verify Report
+                                </button>
+                                {% endif %}
+                            </form>
+
+                            <!-- Status Change Buttons -->
+                            <form method="post" action="{% url 'safety-reports' %}" class="flex items-center flex-wrap gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="report_id" value="{{ report.id }}">
+                                <input type="hidden" name="action" value="update_status">
+
+                                {% if report.status != 'in_progress' and report.status != 'resolved' %}
+                                <button type="submit" name="status" value="in_progress" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-300 transition-colors">
+                                    Mark In Progress
+                                </button>
+                                {% endif %}
+
+                                {% if report.status != 'resolved' %}
+                                <button type="submit" name="status" value="resolved" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition-colors">
+                                    Mark Resolved
+                                </button>
+                                {% endif %}
+
+                                {% if report.status != 'open' %}
+                                <button type="submit" name="status" value="open" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition-colors">
+                                    Re-Open
+                                </button>
+                                {% endif %}
+
+                                {% if report.status != 'rejected' and report.status != 'resolved' %}
+                                <button type="submit" name="status" value="rejected" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors">
+                                    Reject
+                                </button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <!-- Empty state -->
+                <div class="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-900">No community safety reports found</h3>
+                    <p class="text-sm text-slate-500 max-w-sm mx-auto">
+                        {% if search_query or current_status != 'all' or current_severity != 'all' %}
+                        Try clearing or adjusting your search filters to find what you are looking for.
+                        {% else %}
+                        No resident or volunteer hazard reports have been submitted yet. When reports arrive via mobile apps, they will appear here for review.
+                        {% endif %}
+                    </p>
+                    {% if search_query or current_status != 'all' or current_severity != 'all' %}
+                    <div class="pt-2">
+                        <a href="{% url 'safety-reports' %}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors">
+                            Reset Filters
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <!-- FULL PHOTO LIGHTBOX MODAL -->
+    <div id="image-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-3 bg-slate-950 flex items-center justify-between border-b border-slate-800 text-white">
+                <span id="image-modal-title" class="text-sm font-semibold truncate"></span>
+                <button type="button" onclick="closeImageModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-2 flex items-center justify-center bg-black/50 overflow-auto">
+                <img id="image-modal-img" src="" alt="Report photo full size" class="max-h-[75vh] w-auto object-contain rounded" />
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT FOR SIDEBAR & MAP -->
+    <script>
+        // Sidebar Toggle
+        const toggle = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('page-content');
+        const icon = document.getElementById('sidebar-toggle-icon');
+        let isOpen = false;
+
+        function setSidebarState(open) {
+            isOpen = open;
+            if (open) {
+                sidebar.classList.remove('-translate-x-full');
+                toggle.style.left = '16rem';
+                icon.classList.add('rotate-180');
+                toggle.setAttribute('aria-expanded', 'true');
+                if (window.innerWidth >= 1024) content.style.marginLeft = '16rem';
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                toggle.style.left = '0';
+                icon.classList.remove('rotate-180');
+                toggle.setAttribute('aria-expanded', 'false');
+                content.style.marginLeft = '0';
+            }
+
+            // Invalidate map size after sidebar animation
+            setTimeout(() => {
+                if (typeof map !== 'undefined' && map) {
+                    map.invalidateSize();
+                }
+            }, 200);
+        }
+
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setSidebarState(!isOpen);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth < 1024 && isOpen && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                setSidebarState(false);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth < 1024 && isOpen) content.style.marginLeft = '0';
+            else if (window.innerWidth >= 1024 && isOpen) content.style.marginLeft = '16rem';
+        });
+
+        // Photo Modal
+        function openImageModal(imgUrl, title) {
+            document.getElementById('image-modal-img').src = imgUrl;
+            document.getElementById('image-modal-title').textContent = title || 'Report Photo';
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+            document.getElementById('image-modal-img').src = '';
+        }
+
+        document.getElementById('image-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeImageModal();
+        });
+
+        // ==========================================
+        // MAP INITIALIZATION (MIMICKING DASHBOARD)
+        // ==========================================
+        const mapMarkersData = JSON.parse('{{ map_markers_json|escapejs }}');
+        const areaBoundariesData = JSON.parse('{{ area_boundaries_json|escapejs }}');
+
+        let mapCenter = [3.1390, 101.6869];
+        let zoomLevel = 13;
+
+        if (mapMarkersData.length > 0) {
+            mapCenter = [mapMarkersData[0].lat, mapMarkersData[0].lng];
+        } else if (areaBoundariesData.length > 0) {
+            mapCenter = [areaBoundariesData[0].lat, areaBoundariesData[0].lng];
+        }
+
+        const map = L.map('map').setView(mapCenter, zoomLevel);
+        const mapBounds = [];
+        const reportMarkers = {};
+
+        // Use CartoDB Voyager tiles (avoids OSM tile usage policy block)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4n83_1_f56c163dd4fc94a222f8a7e0', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors, © CARTO'
+        }).addTo(map);
+
+        // Draw Area Boundaries (Township Context, matching dashboard)
+        areaBoundariesData.forEach(function(areaInfo) {
+            const center = [areaInfo.lat, areaInfo.lng];
+            const boundary = L.circle(center, {
+                radius: areaInfo.radius_m,
+                color: '#8b5cf6',
+                fillColor: '#a78bfa',
+                fillOpacity: 0.08,
+                weight: 2,
+                dashArray: '4, 6'
+            }).addTo(map);
+
+            L.circleMarker(center, {
+                color: '#6d28d9',
+                fillColor: '#6d28d9',
+                fillOpacity: 1,
+                radius: 4
+            }).addTo(map)
+              .bindPopup(`<div class="text-xs"><strong>${areaInfo.name}</strong><br>Township Area centre · ${areaInfo.radius_m} m radius</div>`);
+
+            boundary.bindTooltip(areaInfo.name, {sticky: true, className: 'font-semibold text-indigo-900'});
+            mapBounds.push(boundary.getBounds());
+        });
+
+        // Helper: Pin color based on status and severity
+        function getMarkerColor(report) {
+            if (report.status === 'resolved') return '#10b981'; // emerald
+            if (report.status === 'rejected') return '#64748b'; // slate
+            if (report.severity === 'critical') return '#f43f5e'; // rose
+            if (report.severity === 'high') return '#f97316'; // orange
+            if (report.severity === 'medium') return '#3b82f6'; // blue
+            return '#6366f1'; // indigo
+        }
+
+        // Helper: Category emoji
+        function getCategoryEmoji(cat) {
+            const c = (cat || '').toLowerCase();
+            if (c.includes('fire')) return '🔥';
+            if (c.includes('flood')) return '🌊';
+            if (c.includes('light')) return '💡';
+            if (c.includes('road')) return '🚧';
+            if (c.includes('suspicious') || c.includes('theft')) return '🚨';
+            if (c.includes('maint')) return '🔧';
+            return '📌';
+        }
+
+        // Plot Report Pins
+        mapMarkersData.forEach(function(report) {
+            const color = getMarkerColor(report);
+            const emoji = getCategoryEmoji(report.category);
+
+            const pinIcon = L.divIcon({
+                className: '',
+                html: `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:50% 50% 50% 0;box-shadow:0 2px 6px rgba(0,0,0,0.35);transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                    <span style="display:inline-block;transform:rotate(45deg);font-size:13px;line-height:1;">${emoji}</span>
+                </div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 28],
+                popupAnchor: [0, -28]
+            });
+
+            const marker = L.marker([report.lat, report.lng], { icon: pinIcon }).addTo(map);
+
+            const popupHtml = `
+                <div class="p-1 min-w-[210px] text-xs font-sans">
+                    <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-200">
+                        <span class="font-bold text-slate-900 truncate">${report.title}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold text-white uppercase flex-shrink-0" style="background:${color}">${report.severity}</span>
+                    </div>
+                    <div class="py-1.5 space-y-1 text-slate-600">
+                        <div class="flex justify-between"><span class="text-slate-400">Category:</span> <span class="font-medium text-slate-800">${report.category}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Status:</span> <span class="font-semibold text-indigo-600">${report.status_label || report.status}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Submitter:</span> <span>${report.author}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Role:</span> <span class="font-medium">${report.role}</span></div>
+                        <div class="text-[11px] text-slate-400 pt-0.5">${report.time}</div>
+                    </div>
+                    <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                        <button type="button" onclick="scrollToReportCard(${report.id})" class="text-indigo-600 hover:text-indigo-800 font-semibold underline text-xs">
+                            Inspect Card ↓
+                        </button>
+                        <a href="https://maps.google.com/?q=${report.lat},${report.lng}" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-slate-600 text-[11px]">
+                            Google Maps ↗
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupHtml);
+            reportMarkers[report.id] = marker;
+            mapBounds.push([report.lat, report.lng]);
+        });
+
+        if (mapBounds.length > 0) {
+            map.fitBounds(mapBounds, { padding: [40, 40], maxZoom: 16 });
+        }
+
+        // Focus report on map from report cards
+        function focusReportOnMap(lat, lng, reportId) {
+            const mapCard = document.getElementById('hazard-map-card');
+            if (mapCard) {
+                mapCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            setTimeout(() => {
+                map.flyTo([lat, lng], 17, { animate: true, duration: 1.0 });
+                if (reportMarkers[reportId]) {
+                    setTimeout(() => {
+                        reportMarkers[reportId].openPopup();
+                    }, 600);
+                }
+            }, 250);
+        }
+
+        // Scroll to report card when clicking Inspect Card inside Leaflet popup
+        function scrollToReportCard(reportId) {
+            const card = document.getElementById('report-card-' + reportId);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50/40');
+                setTimeout(() => {
+                    card.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50/40');
+                }, 2200);
+            }
+        }
+    </script>
+</body>
+</html>

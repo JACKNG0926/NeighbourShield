@@ -2,14 +2,10 @@ import json
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import user_passes_test
-from django.db.models import Count
-from .forms import AreaRegistrationForm, PropertyRegistrationForm
-from .models import Area, Incident, Property, SafetyPost, CommunityPost
-from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
+from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
-from .models import Area, Incident, Property, SafetyPost, User
-from django.db.models import Prefetch
-from .models import Street
+from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
+from .models import Area, Incident, Property, SafetyPost, CommunityPost, User, Street
 
 township_admin_required = user_passes_test(
     lambda user: user.is_authenticated and user.is_township_admin,
@@ -258,4 +254,145 @@ def community_board(request):
 
     return render(request, 'core/community_board.html', {
         'posts': posts
+    })
+
+
+@township_admin_required
+def safety_reports(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        report_id = request.POST.get('report_id')
+
+        if report_id:
+            report = get_object_or_404(SafetyPost, id=report_id, post_type='hazard')
+
+            if action == 'update_status':
+                new_status = request.POST.get('status')
+                valid_statuses = [choice[0] for choice in SafetyPost.STATUS_CHOICES]
+                if new_status in valid_statuses:
+                    report.status = new_status
+                    if new_status == 'resolved':
+                        report.resolved_at = timezone.now()
+                    elif report.resolved_at:
+                        report.resolved_at = None
+                    report.save(update_fields=['status', 'resolved_at'])
+                    messages.success(request, f'Report #{report.id} "{report.title}" status updated to {report.get_status_display()}.')
+
+            elif action == 'verify':
+                report.is_verified = True
+                report.verified_by = request.user
+                report.verified_at = timezone.now()
+                report.save(update_fields=['is_verified', 'verified_by', 'verified_at'])
+                messages.success(request, f'Report #{report.id} "{report.title}" has been verified.')
+
+            elif action == 'unverify':
+                report.is_verified = False
+                report.verified_by = None
+                report.verified_at = None
+                report.save(update_fields=['is_verified', 'verified_by', 'verified_at'])
+                messages.info(request, f'Report #{report.id} verification status removed.')
+
+            elif action == 'delete':
+                title = report.title
+                report.delete()
+                messages.warning(request, f'Report "{title}" was removed.')
+
+        # Preserve query params on reload
+        query_params = request.GET.urlencode()
+        redirect_target = f"{request.path}?{query_params}" if query_params else request.path
+        return redirect(redirect_target)
+
+    # Base query for hazard reports submitted from resident & volunteer mobile apps
+    base_qs = SafetyPost.objects.filter(post_type='hazard').select_related(
+        'author', 'author__area', 'author__residence', 'area', 'verified_by'
+    ).order_by('-created_at')
+
+    # KPI Statistics
+    stats = {
+        'total': base_qs.count(),
+        'open': base_qs.filter(status='open').count(),
+        'in_progress': base_qs.filter(status='in_progress').count(),
+        'resolved': base_qs.filter(status='resolved').count(),
+        'critical': base_qs.filter(severity='critical').count(),
+        'verified': base_qs.filter(is_verified=True).count(),
+        'volunteer_reports': base_qs.filter(Q(author__role='volunteer') | Q(author__is_verified_volunteer=True)).count(),
+        'resident_reports': base_qs.filter(author__role='resident', author__is_verified_volunteer=False).count(),
+    }
+
+    # Filters
+    reports = base_qs
+
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter and status_filter != 'all':
+        reports = reports.filter(status=status_filter)
+
+    severity_filter = request.GET.get('severity', '').strip()
+    if severity_filter and severity_filter != 'all':
+        reports = reports.filter(severity=severity_filter)
+
+    category_filter = request.GET.get('category', '').strip()
+    if category_filter and category_filter != 'all':
+        reports = reports.filter(category=category_filter)
+
+    role_filter = request.GET.get('role', '').strip()
+    if role_filter == 'volunteer':
+        reports = reports.filter(Q(author__role='volunteer') | Q(author__is_verified_volunteer=True))
+    elif role_filter == 'resident':
+        reports = reports.filter(author__role='resident', author__is_verified_volunteer=False)
+
+    search_query = request.GET.get('q', '').strip()
+    if search_query:
+        reports = reports.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(author__username__icontains=search_query) |
+            Q(author__unit_address__icontains=search_query)
+        )
+
+    # Map markers for reports with coordinates
+    map_markers = []
+    for rep in reports:
+        if rep.latitude is not None and rep.longitude is not None:
+            map_markers.append({
+                'id': rep.id,
+                'title': rep.title,
+                'category': rep.get_category_display(),
+                'severity': rep.severity,
+                'status': rep.status,
+                'status_label': rep.get_status_display(),
+                'author': rep.author.username,
+                'role': 'Volunteer Responder' if (rep.author.role == 'volunteer' or rep.author.is_verified_volunteer) else 'Resident',
+                'lat': float(rep.latitude),
+                'lng': float(rep.longitude),
+                'time': rep.created_at.strftime("%b %d, %Y %H:%M"),
+            })
+
+    # Area boundaries for township context (matching dashboard map)
+    area_boundaries = [
+        {
+            'name': a.name,
+            'lat': float(a.center_latitude),
+            'lng': float(a.center_longitude),
+            'radius_m': a.radius_m,
+        }
+        for a in Area.objects.filter(
+            center_latitude__isnull=False,
+            center_longitude__isnull=False,
+            radius_m__isnull=False,
+        )
+    ]
+
+    return render(request, 'core/safety_reports.html', {
+        'reports': reports,
+        'stats': stats,
+        'status_choices': SafetyPost.STATUS_CHOICES,
+        'category_choices': SafetyPost.CATEGORY_CHOICES,
+        'severity_choices': SafetyPost.SEVERITY_CHOICES,
+        'current_status': status_filter or 'all',
+        'current_severity': severity_filter or 'all',
+        'current_category': category_filter or 'all',
+        'current_role': role_filter or 'all',
+        'search_query': search_query,
+        'map_markers_json': json.dumps(map_markers),
+        'area_boundaries_json': json.dumps(area_boundaries),
     })
