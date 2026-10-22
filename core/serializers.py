@@ -1,6 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import Area, Device, Property, User, Incident, SafetyPost, CommunityPost
+from .models import Area, Device, Property, User, Incident, SafetyPost, CommunityPost, CommunityPostComment, CommunityPostLike
 
 
 class AreaSerializer(serializers.ModelSerializer):
@@ -139,13 +139,37 @@ class SafetyPostSerializer(serializers.ModelSerializer):
 class CommunityPostSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.username', read_only=True)
     author_area = serializers.CharField(source='author.area.name', read_only=True, default="Unknown Area")
+    likes_count = serializers.IntegerField(source='likes.count', read_only=True)
+    comments_count = serializers.IntegerField(source='comment_count', read_only=True)
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityPost
-        fields = ['id', 'author_name', 'author_area', 'title', 'content', 'is_hidden', 'created_at']
-        read_only_fields = ['is_hidden', 'created_at']
+        fields = ['id', 'author_name', 'author_area', 'title', 'content', 'is_hidden', 'created_at', 'likes_count', 'comments_count', 'is_liked']
+        read_only_fields = ['is_hidden', 'created_at', 'likes_count', 'comments_count', 'is_liked']
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            return obj.is_liked_by(request.user)
+        return False
 
     def create(self, validated_data):
         # Automatically tie the post to the user making the API request
         validated_data['author'] = self.context['request'].user
         return super().create(validated_data)
+
+
+class CommunityPostCommentSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.username', read_only=True)
+    author_role = serializers.CharField(source='author.role', read_only=True)
+
+    class Meta:
+        model = CommunityPostComment
+        fields = ['id', 'post', 'author_name', 'author_role', 'content', 'is_hidden', 'created_at']
+        read_only_fields = ['is_hidden', 'created_at']
+
+    def create(self, validated_data):
+        validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)
+

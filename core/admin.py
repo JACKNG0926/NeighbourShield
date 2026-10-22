@@ -4,7 +4,8 @@ from django.utils import timezone
 
 # Removed 'Street' from the imports
 from .models import (User, Area, Property, Device, EscalationPolicy, Incident, Notification,
-                     Acknowledgement, IncidentLog, SafetyPost, BroadcastRecipient)
+                     Acknowledgement, IncidentLog, SafetyPost, BroadcastRecipient,
+                     CommunityPost, CommunityPostLike, CommunityPostComment)
 
 
 # ---------------------------------------------------------------------
@@ -237,3 +238,28 @@ class BroadcastRecipientAdmin(ReadOnlyAdmin):
     list_display = ('post', 'user', 'delivered', 'delivered_at', 'read_at')
     list_filter = ('delivered',)
     list_select_related = ('post', 'user')
+
+
+# ---------------------------------------------------------------------
+# Community Board
+# ---------------------------------------------------------------------
+@admin.register(CommunityPost)
+class CommunityPostAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'author', 'is_hidden', 'created_at')
+    list_filter = ('is_hidden', 'created_at')
+    search_fields = ('title', 'content', 'author__username')
+    list_select_related = ('author',)
+
+
+@admin.register(CommunityPostLike)
+class CommunityPostLikeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'post', 'user', 'created_at')
+    list_select_related = ('post', 'user')
+
+
+@admin.register(CommunityPostComment)
+class CommunityPostCommentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'post', 'author', 'is_hidden', 'created_at')
+    list_filter = ('is_hidden', 'created_at')
+    search_fields = ('content', 'author__username', 'post__title')
+    list_select_related = ('post', 'author')

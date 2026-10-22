@@ -1,11 +1,13 @@
 import json
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
 from .forms import AreaRegistrationForm, PropertyRegistrationForm, BroadcastForm
-from .models import Area, Incident, Property, SafetyPost, CommunityPost, User, Street
+from .models import Area, Incident, Property, SafetyPost, CommunityPost, CommunityPostComment, CommunityPostLike, User, Street
 
 township_admin_required = user_passes_test(
     lambda user: user.is_authenticated and user.is_township_admin,
@@ -220,13 +222,19 @@ def volunteer_applications(request):
 
 @township_admin_required
 def community_board(request):
+    is_ajax = (
+        request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        or 'application/json' in request.headers.get('accept', '')
+        or request.POST.get('ajax') == '1'
+    )
+
     if request.method == 'POST':
         action = request.POST.get('action')
 
         # 1. Handle Admin creating a new post
         if action == 'create':
-            title = request.POST.get('title')
-            content = request.POST.get('content')
+            title = request.POST.get('title', '').strip()
+            content = request.POST.get('content', '').strip()
             if title and content:
                 CommunityPost.objects.create(
                     author=request.user,
@@ -240,17 +248,132 @@ def community_board(request):
         elif action in ['hide', 'show']:
             post_id = request.POST.get('post_id')
             if post_id:
-                post = CommunityPost.objects.get(id=post_id)
-                post.is_hidden = (action == 'hide')
-                post.save(update_fields=['is_hidden'])
+                try:
+                    post = CommunityPost.objects.get(id=post_id)
+                    post.is_hidden = (action == 'hide')
+                    post.save(update_fields=['is_hidden'])
 
-                status_msg = "hidden from" if post.is_hidden else "visible to"
-                messages.success(request, f'Post "{post.title}" is now {status_msg} residents.')
+                    status_msg = "hidden from" if post.is_hidden else "visible to"
+                    messages.success(request, f'Post "{post.title}" is now {status_msg} residents.')
+                    if is_ajax:
+                        return JsonResponse({'status': 'ok', 'is_hidden': post.is_hidden})
+                except CommunityPost.DoesNotExist:
+                    pass
+
+        # 3. Handle Liking / Unliking a post
+        elif action == 'like':
+            post_id = request.POST.get('post_id')
+            if post_id:
+                try:
+                    post = CommunityPost.objects.get(id=post_id)
+                    existing_like = CommunityPostLike.objects.filter(post=post, user=request.user).first()
+                    if existing_like:
+                        existing_like.delete()
+                        user_liked = False
+                    else:
+                        CommunityPostLike.objects.create(post=post, user=request.user)
+                        user_liked = True
+
+                    total_likes = post.likes.count()
+                    if is_ajax:
+                        return JsonResponse({
+                            'status': 'ok',
+                            'liked': user_liked,
+                            'likes_count': total_likes,
+                        })
+                    return redirect(f"{reverse('community_board')}#post-{post_id}")
+                except CommunityPost.DoesNotExist:
+                    pass
+
+        # 4. Handle Commenting on a post
+        elif action == 'comment':
+            post_id = request.POST.get('post_id')
+            content = request.POST.get('content', '').strip()
+            if post_id and content:
+                try:
+                    post = CommunityPost.objects.get(id=post_id)
+                    comment = CommunityPostComment.objects.create(
+                        post=post,
+                        author=request.user,
+                        content=content,
+                    )
+                    messages.success(request, 'Your comment has been posted.')
+                    if is_ajax:
+                        return JsonResponse({
+                            'status': 'ok',
+                            'comment': {
+                                'id': comment.id,
+                                'author': comment.author.username,
+                                'role': comment.author.get_role_display() if hasattr(comment.author, 'get_role_display') else comment.author.role,
+                                'content': comment.content,
+                                'created_at': comment.created_at.strftime("%b %d, %Y, %I:%M %p"),
+                            },
+                            'comments_count': post.comments.filter(is_hidden=False).count(),
+                        })
+                    return redirect(f"{reverse('community_board')}#post-{post_id}")
+                except CommunityPost.DoesNotExist:
+                    pass
+
+        # 5. Handle deleting a comment
+        elif action == 'delete_comment':
+            comment_id = request.POST.get('comment_id')
+            if comment_id:
+                try:
+                    comment = CommunityPostComment.objects.get(id=comment_id)
+                    post_id = comment.post_id
+                    if request.user.is_township_admin or comment.author_id == request.user.id:
+                        comment.delete()
+                        messages.success(request, 'Comment removed.')
+                        if is_ajax:
+                            post = CommunityPost.objects.get(id=post_id)
+                            return JsonResponse({
+                                'status': 'ok',
+                                'deleted_id': comment_id,
+                                'comments_count': post.comments.filter(is_hidden=False).count(),
+                            })
+                    return redirect(f"{reverse('community_board')}#post-{post_id}")
+                except CommunityPostComment.DoesNotExist:
+                    pass
+
+        # 6. Handle moderating comments (hide/show)
+        elif action in ['hide_comment', 'show_comment']:
+            comment_id = request.POST.get('comment_id')
+            if comment_id and request.user.is_township_admin:
+                try:
+                    comment = CommunityPostComment.objects.get(id=comment_id)
+                    comment.is_hidden = (action == 'hide_comment')
+                    comment.save(update_fields=['is_hidden'])
+                    status_msg = "hidden" if comment.is_hidden else "visible"
+                    messages.success(request, f'Comment is now {status_msg}.')
+                    if is_ajax:
+                        return JsonResponse({'status': 'ok', 'is_hidden': comment.is_hidden})
+                    return redirect(f"{reverse('community_board')}#post-{comment.post_id}")
+                except CommunityPostComment.DoesNotExist:
+                    pass
 
         return redirect('community_board')
 
-    # Fetch all posts for the feed
-    posts = CommunityPost.objects.select_related('author').all().order_by('-created_at')
+    # Fetch all posts for the feed with optimized prefetching
+    posts = (
+        CommunityPost.objects.select_related('author', 'author__area')
+        .prefetch_related(
+            'likes',
+            'likes__user',
+            'comments',
+            'comments__author',
+            'comments__author__area',
+        )
+        .all()
+        .order_by('-created_at')
+    )
+
+    user_id = request.user.id
+    for post in posts:
+        post.user_has_liked = any(like.user_id == user_id for like in post.likes.all())
+        post.active_comments = [
+            c for c in post.comments.all()
+            if not c.is_hidden or request.user.is_township_admin
+        ]
 
     return render(request, 'core/community_board.html', {
         'posts': posts
